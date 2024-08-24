@@ -1,4 +1,5 @@
-import pika, json
+import pika
+import json
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
 channel = connection.channel()
@@ -13,9 +14,6 @@ while True:
     message = msg[1]
     if routing_key.startswith("/"):
         routing_key = routing_key[1:]
-    
-    message = json.dumps({
-        "sender":username,
-        "message": message
-    })
+
+    message = json.dumps({"sender": username, "message": message})
     channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)

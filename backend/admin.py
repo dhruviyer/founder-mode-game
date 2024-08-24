@@ -1,4 +1,9 @@
-import pika, threading, json, random, string
+import pika
+import threading
+import json
+import random
+import string
+
 
 class Admin:
     def __init__(self):
@@ -11,7 +16,7 @@ class Admin:
         queue_name = result.method.queue
 
         self.channel.queue_bind(
-            exchange="broker", queue=queue_name, routing_key=f"admin.#"
+            exchange="broker", queue=queue_name, routing_key="admin.#"
         )
 
         self.work_queue = {}
@@ -52,16 +57,24 @@ class Admin:
                         confirmation_code = "".join(
                             random.choice(string.ascii_lowercase) for _ in range(5)
                         )
-                        confirm = lambda: self.channel.basic_publish(
-                            exchange="broker",
-                            routing_key=f"{employee}.admin.confirm_employment",
-                            body=body,
-                        )
+
+                        def confirm():
+                            self.channel.basic_publish(
+                                exchange="broker",
+                                routing_key=f"{employee}.admin.confirm_employment",
+                                body=body,
+                            )
+
                         self.work_queue[confirmation_code] = confirm
                         self.channel.basic_publish(
                             exchange="broker",
                             routing_key=routing_key,
-                            body=json.dumps({"sender":"admin", "message":f"Do you want to hire {employee} at {new_employer} for a salary of {salary}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}"}),
+                            body=json.dumps(
+                                {
+                                    "sender": "admin",
+                                    "message": f"Do you want to hire {employee} at {new_employer} for a salary of {salary}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}",
+                                }
+                            ),
                         )
 
         self.channel.basic_consume(

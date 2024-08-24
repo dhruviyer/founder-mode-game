@@ -1,6 +1,7 @@
 from time import sleep
 from dev_agent import DevAgent
-import pika, threading
+import pika
+import threading
 from admin import Admin
 import datetime
 
@@ -17,12 +18,16 @@ bob.thread.start()
 alice.thread.start()
 admin.thread.start()
 
+
 def tick():
     tick_counter = 0
-    while tick_counter<20:
+    while tick_counter < 20:
         sleep(5)
-        channel.basic_publish(exchange='broker', routing_key="tick", body=str(datetime.datetime.now()))
+        channel.basic_publish(
+            exchange="broker", routing_key="tick", body=str(datetime.datetime.now())
+        )
         tick_counter = tick_counter + 1
+
 
 thread = threading.Thread(target=tick)
 thread.start()

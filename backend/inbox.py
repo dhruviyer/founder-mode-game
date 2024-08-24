@@ -6,7 +6,7 @@ channel = connection.channel()
 result = channel.queue_declare("", exclusive=True)
 queue_name = result.method.queue
 
-channel.queue_bind(exchange="broker", queue=queue_name, routing_key=f"#")
+channel.queue_bind(exchange="broker", queue=queue_name, routing_key="#")
 
 
 def callback(ch, method, properties, body):

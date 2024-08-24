@@ -1,4 +1,6 @@
-import pika, threading, json
+import pika
+import threading
+import json
 from openai import OpenAI
 
 client = OpenAI()
@@ -86,7 +88,7 @@ tools = [
                 "properties": {
                     "focus": {
                         "type": "string",
-                        "description":  """ "quality" or "features". If you select quality, you will focus on improving product quality. If you select features,
+                        "description": """ "quality" or "features". If you select quality, you will focus on improving product quality. If you select features,
                         you will spend this sprint working on product features.""",
                     },
                 },
@@ -97,8 +99,9 @@ tools = [
     },
 ]
 
-SYS_MESSAGE = (
-    lambda name: f"""
+
+def SYS_MESSAGE(name):
+    return f"""
 You are {name}. You are a software engineer with experience in backend systems. You are currently unemployed and have no manager.
 
 You are conversing in a group chat with multiple participants.
@@ -119,9 +122,9 @@ As an engineer, you can choose to work on improving product quality (tech debt) 
 You can only send messages to someone if you are given explicit permission to send messages to them. Currently, you do not have permission to message anyone, so you cannot yet call send_message().
 
 """
-)
 
-SWE_MESSAGE = f"""
+
+SWE_MESSAGE = """
 You are a software engineer in a simulated economy. You have expertise in backend development
 and your current resume looks like this:
 
@@ -157,12 +160,9 @@ class DevAgent:
             exchange="broker", queue=queue_name, routing_key=f"{self.name}.#"
         )
 
-        self.channel.queue_bind(
-            exchange="broker", queue=queue_name, routing_key=f"tick"
-        )
+        self.channel.queue_bind(exchange="broker", queue=queue_name, routing_key="tick")
 
         self.approved_senders = set()
-
 
         self.messages = {}
         self.global_messages = [{"role": "system", "content": SYS_MESSAGE(self.name)}]
@@ -208,14 +208,19 @@ class DevAgent:
                     if sender not in self.approved_senders:
                         self.approved_senders.add(sender)
                         self.global_messages.append(
-                            {"role": "system", "content": f"""You now have permission to send messages to {sender}"""},
+                            {
+                                "role": "system",
+                                "content": f"""You now have permission to send messages to {sender}""",
+                            },
                         )
                     self.global_messages.append(
-                            {"role": "user", "content": f"""[{self.timestamp}][{sender}] {msg}"""},
-                        )
+                        {
+                            "role": "user",
+                            "content": f"""[{self.timestamp}][{sender}] {msg}""",
+                        },
+                    )
 
                 self.call_llm()
-                        
 
         self.channel.basic_consume(
             queue=queue_name, on_message_callback=callback, auto_ack=True
@@ -229,14 +234,14 @@ class DevAgent:
     def call_llm(self):
         self.max_messages = self.max_messages - 1
         if self.max_messages <= 0:
-             print("Message limit exceeded")
-             return
+            print("Message limit exceeded")
+            return
         response = client.chat.completions.create(
-                        model=MODEL,
-                        messages=self.global_messages,
-                        tools=tools,
-                        tool_choice="required",
-                    )
+            model=MODEL,
+            messages=self.global_messages,
+            tools=tools,
+            tool_choice="required",
+        )
         if (
             response.choices[0].message.tool_calls
             and len(response.choices[0].message.tool_calls) > 0
@@ -247,22 +252,17 @@ class DevAgent:
                 recipient = arguments.get("recipient")
                 message = arguments.get("message")
                 routing_key = f"{recipient}"
-                self.global_messages.append(
-                        response.choices[0].message
-                     )
+                self.global_messages.append(response.choices[0].message)
                 self.global_messages.append(
                     {
                         "role": "tool",
                         "content": f"""[{self.timestamp}][{self.name} (you)] {message}""",
-                        "tool_call_id": response.choices[0].message.tool_calls[0].id
+                        "tool_call_id": response.choices[0].message.tool_calls[0].id,
                     }
                 )
 
-                message = json.dumps({
-                    "sender":self.name,
-                    "message": message
-                })
-    
+                message = json.dumps({"sender": self.name, "message": message})
+
                 self.send_message(routing_key, message)
 
             elif tool_call.function.name == "change_employment":
@@ -271,7 +271,7 @@ class DevAgent:
                 salary = arguments.get("salary")
                 manager = arguments.get("manager")
 
-                routing_key = f"admin.change_employment"
+                routing_key = "admin.change_employment"
                 message = json.dumps(
                     {
                         "employer": employer,
@@ -280,14 +280,12 @@ class DevAgent:
                         "employee": self.name,
                     }
                 )
-                self.global_messages.append(
-                        response.choices[0].message
-                     )
+                self.global_messages.append(response.choices[0].message)
                 self.global_messages.append(
                     {
                         "role": "tool",
                         "content": f"[{self.timestamp}] Request submitted. Do not make a duplicate call with these parameters.",
-                        "tool_call_id": response.choices[0].message.tool_calls[0].id
+                        "tool_call_id": response.choices[0].message.tool_calls[0].id,
                     }
                 )
                 self.send_message(routing_key, message)
@@ -301,14 +299,12 @@ class DevAgent:
                         "employee": self.name,
                     }
                 )
-                self.global_messages.append(
-                        response.choices[0].message
-                     )
+                self.global_messages.append(response.choices[0].message)
                 self.global_messages.append(
                     {
                         "role": "tool",
                         "content": f"[{self.timestamp}] You are now focused on {focus}",
-                        "tool_call_id": response.choices[0].message.tool_calls[0].id
+                        "tool_call_id": response.choices[0].message.tool_calls[0].id,
                     }
                 )
                 self.send_message(routing_key, message)
