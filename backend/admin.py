@@ -4,10 +4,11 @@ import json
 import random
 import string
 import sqlite3
+import locale
 
 class Admin:
     def __init__(self):
-
+        locale.setlocale( locale.LC_ALL, '' )
         self.work_queue = {}
 
         def callback(ch, method, properties, body):
@@ -33,17 +34,18 @@ class Admin:
 
                     cursor.execute("UPDATE EMPLOYEE_OUTPUT set PRIORITY = ? where NAME = ?", (focus, employee)) 
                     conn.commit()
+                    conn.close()
 
-                    print("OUTPUTS Table: ") 
-                    data = cursor.execute('''SELECT * FROM EMPLOYEE_OUTPUT''') 
-                    for row in data: 
-                        print(row)
-                    conn.close() 
+                    ch.basic_publish(
+                        exchange="broker",
+                        routing_key=f"data_broadcast",
+                        body="",
+                    )
 
                 elif function == "change_employment":
                     args = json.loads(body.decode("ascii"))
                     employee = args["employee"]
-                    new_employer = args["employer"]
+                    new_employer = args["employer"].upper()
                     manager = args["manager"]
                     salary = int(args["salary"])
 
@@ -58,13 +60,14 @@ class Admin:
 
                         cursor.execute("""UPDATE EMPLOYEES set EMPLOYER = 'unemployed', SALARY = 0, MANAGER = 'NULL' where NAME = ?""", (employee,)) 
                         conn.commit()
-
-                        print("EMPLOYEES Table: ") 
-                        data = cursor.execute('''SELECT * FROM EMPLOYEES''') 
-                        for row in data: 
-                            print(row) 
-
                         conn.close()
+
+                        ch.basic_publish(
+                            exchange="broker",
+                            routing_key=f"data_broadcast",
+                            body="",
+                        )
+
                         
                     else:
                         routing_key = f"{manager}"
@@ -83,13 +86,13 @@ class Admin:
             
                             cursor.execute("""UPDATE EMPLOYEES set EMPLOYER = ?, SALARY = ?, MANAGER = ? where NAME = ?""", (new_employer, salary, manager, employee)) 
                             conn.commit()
-
-                            print("EMPLOYEES Table: ") 
-                            data = cursor.execute('''SELECT * FROM EMPLOYEES''') 
-                            for row in data: 
-                                print(row)
-                            
                             conn.close()
+
+                            ch.basic_publish(
+                                exchange="broker",
+                                routing_key=f"data_broadcast",
+                                body="",
+                            )
 
                         self.work_queue[confirmation_code] = confirm
                         ch.basic_publish(
@@ -98,7 +101,7 @@ class Admin:
                             body=json.dumps(
                                 {
                                     "sender": "admin",
-                                    "message": f"Do you want to hire {employee} at {new_employer} for a salary of {salary}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}",
+                                    "message": f"Do you want to hire {employee} at {new_employer} for a salary of {locale.currency(salary, grouping=True)}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}",
                                 }
                             ),
                         )

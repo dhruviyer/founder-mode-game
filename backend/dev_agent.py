@@ -58,7 +58,7 @@ tools = [
                     },
                     "manager": {
                         "type": "string",
-                        "description": "The username of the user who offered you the job, who will become your new manager",
+                        "description": "The username of the user who offered you the job, who will become your new manager. This cannot be null. If you do not know the name of the manager ask before calling this function.",
                     },
                     "salary": {
                         "type": "integer",

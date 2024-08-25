@@ -5,6 +5,7 @@ import websockets
 import threading
 import functools
 import re
+import sqlite3
 
 connections = {}
 def sync(f):
@@ -24,6 +25,30 @@ async def callback(ch, method, properties, body):
     ]
 
     try:
+        if method.routing_key == "data_broadcast":
+            conn = sqlite3.connect('company_sim.db') 
+            cursor = conn.cursor() 
+
+            employee_data = cursor.execute('''SELECT * FROM EMPLOYEES''')
+            employee_data = [{"name":row[0], "employer": row[1], "manager": row[2], "salary": row[3], "type": row[4]} for row in employee_data]
+            conn.close()
+
+            for recipient in connections:
+                data_packet = {
+                    "type": "data",
+                    "employees": employee_data,
+                }
+                if "company" in connections[recipient]:
+                    output_data = cursor.execute("""SELECT EMPLOYEES.NAME, EMPLOYER, PRIORITY FROM 
+                                                EMPLOYEE_OUTPUTS
+                                                INNER JOIN ON EMPLOYEES.NAME=EMPLOYEE_OUTPUTS.NAME
+                                                WHERE EMPLOYER=?""",(connections[recipient]["company"]))
+                    output_data = [{"name":row[0], "priority": row[1], "employer": row[2]} for row in output_data]
+                    data_packet["outputs"] = output_data
+
+                await connections[recipient]["socket"].send(json.dumps(data_packet))
+                return
+
         for pattern in ignored_routing_keys:
             if re.match(pattern, method.routing_key):
                 print("matched", pattern)
@@ -33,12 +58,22 @@ async def callback(ch, method, properties, body):
         sender = args["sender"]
         message = args["message"]
         recipient = method.routing_key
-        print(recipient)
         if recipient in connections:
-            socket = connections[recipient]
-            await socket.send(json.dumps({"sender": sender, "message": message}))
+            socket = connections[recipient]["socket"]
+            await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
     except json.decoder.JSONDecodeError:
         pass
+
+def validate_message(message):
+    msg = message.split(" ", 1)
+    if len(msg) != 2:
+        return False
+    else:
+        routing_key = msg[0].lower()
+        message = msg[1]
+        if not routing_key.startswith("/"):
+            return False
+        return True
 
 async def send_data(websocket, path):
     global connections
@@ -47,7 +82,34 @@ async def send_data(websocket, path):
             args = json.loads(message)
             sender = args["sender"]
             if sender not in connections:
-                connections[sender] = websocket
+                connections[sender] = {"socket":websocket}
+
+                conn = sqlite3.connect('company_sim.db') 
+                cursor = conn.cursor() 
+
+                employee_data = cursor.execute('''SELECT * FROM EMPLOYEES''')
+                employee_data = [{"name":row[0], "employer": row[1], "manager": row[2], "salary": row[3], "type": row[4]} for row in employee_data]
+                conn.close()
+
+                data_packet = {
+                    "type": "data",
+                    "employees": employee_data,
+                }
+
+                await connections[sender]["socket"].send(json.dumps(data_packet))
+            
+            if args["message"] == 'heartbeat':
+                return
+            elif args["message"].startswith("registration"):
+                temp = args["message"].split(" ")
+                username = temp[1]
+                company = temp[2]
+                connections[username]["company"] = company
+                return
+            
+            elif not validate_message(args["message"]):
+                return
+            
             msg = args["message"].split(" ", 1)
             routing_key = msg[0].lower()
             message = msg[1]
@@ -64,9 +126,9 @@ async def send_data(websocket, path):
 
             connection.close()
 
-            await websocket.send(json.dumps({"sender": f"You (to {routing_key})", "message": msg[1]}))
+            await websocket.send(json.dumps({"type": "message", "sender": f"You (to {routing_key})", "message": msg[1]}))
     finally:
-        connections = {key: value for key, value in connections.items() if value != websocket}
+        connections = {key: value for key, value in connections.items() if value["socket"] != websocket}
 
 def publisher():
     loop = asyncio.new_event_loop()
