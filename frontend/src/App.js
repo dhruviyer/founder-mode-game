@@ -1,6 +1,7 @@
 import './App.css';
 import Chat from "./components/Chat.js"
 import {
+  Col,
   Container, 
   Row} from "react-bootstrap";
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -8,12 +9,14 @@ import Settings from "./components/Settings.js"
 import { useEffect, useState } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket"
 import LaborMarket from './components/LaborMarket.js';
+import MyCompany from './components/MyCompany.js';
 
 function App() {
 
   const [username, setUsername] = useState("");
   const [messages, setMessages] = useState([]);
   const [laborData, setLaborData] = useState({});
+  const [outputData, setOutputData] = useState({});
   const [company, setCompany] = useState("");
   const [connectionFlag, setConnectionFlag] = useState(true);
 
@@ -24,31 +27,20 @@ function App() {
       {
           share: true,
           shouldReconnect: () => true,
-          onError: () => {setConnectionFlag(true); alert("Could not send message, please try again in a few minutes!")},
+          onError: () => {alert("Could not send message, please try again in a few minutes!")},
       },
   )
 
   const customSendMessage = (message) => {
     console.log(message, readyState);
-      if (readyState === ReadyState.OPEN) {
+       
           sendJsonMessage({
               method: "message",
               message: message,
               sender: username
           });
-      }
+      
   }
-
-  useEffect(() => {
-    if(connectionFlag && readyState === ReadyState.OPEN) {
-      customSendMessage("heartbeat");
-      setConnectionFlag(false);
-      }
-  }, [readyState, connectionFlag])
-
-  useEffect(() => {
-    customSendMessage("registration "+username+" "+company);
-  },[company, username])
 
   useEffect(() => {
       if(lastJsonMessage != null) {
@@ -61,15 +53,31 @@ function App() {
                   }
               ]);
           } else {
+            console.log(lastJsonMessage)
               if ('employees' in lastJsonMessage) {
                 setLaborData(laborData => {
-                  const newData = {...laborData};
+                  const newData = {};
                   lastJsonMessage['employees'].forEach((record) => {
                       var innerData = {};
                       innerData["employer"] = record["employer"];
                       innerData["salary"] = record["salary"];
                       innerData["manager"] = record["manager"];
                       innerData["type"] = record["type"];
+                      newData[record["name"]] = innerData;
+                    })
+                    return newData;
+                  }
+                  )
+                }
+              
+                if ('outputs' in lastJsonMessage) {
+                setOutputData(outputData => {
+                  const newData = {};
+                  lastJsonMessage['outputs'].forEach((record) => {
+                      var innerData = {};
+                      innerData["priority"] = record["priority"];
+                      innerData["skill"] = record["skill"];
+                      innerData["salary"] = record["salary"];
                       newData[record["name"]] = innerData;
                     })
                     return newData;
@@ -85,9 +93,12 @@ function App() {
     <div className="App">
       <Container fluid style={{paddingTop: "1em", height:"95vh"}}>
           <Row style={{paddingTop: "1em", height:"95vh"}}>
-            <Settings username={username} setUsername={setUsername} company={company} setCompany={setCompany}/>
+            <Settings username={username} setUsername={setUsername} company={company} setCompany={setCompany} sendMessage={customSendMessage}/>
             <Chat username={username} messages={messages} sendMessage={customSendMessage}/>
-            <LaborMarket data={laborData}/>
+            <Col>
+              <LaborMarket data={laborData}/>
+              <MyCompany data={outputData}/>
+            </Col>
           </Row>
       </Container>
     </div>

@@ -8,7 +8,7 @@ function LaborMarket({data}) {
     });
 
     return (
-        <Col style={{textAlign:'left', borderRight: "3px solid"}} md={3}>
+        <Col style={{textAlign:'left'}} md={3}>
             <h1>Labor Market</h1>
             <Table striped bordered hover>
             <thead>

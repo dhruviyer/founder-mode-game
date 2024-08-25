@@ -49,7 +49,7 @@ class Admin:
                     manager = args["manager"]
                     salary = int(args["salary"])
 
-                    if new_employer == "unemployed":
+                    if new_employer == "UNEMPLOYED":
                         ch.basic_publish(
                             exchange="broker",
                             routing_key=f"{employee}.admin.confirm_employment",
@@ -68,7 +68,6 @@ class Admin:
                             body="",
                         )
 
-                        
                     else:
                         routing_key = f"{manager}"
                         confirmation_code = "".join(

@@ -5,10 +5,10 @@ import {Form,
     Button,
     Stack
     } from "react-bootstrap";
-import { Floppy, PersonCircle, ArrowClockwise, Building} from "react-bootstrap-icons"
-import {useState} from "react";
+import { Floppy, PersonCircle, ArrowClockwise, Building, Globe2} from "react-bootstrap-icons"
+import {useState, useEffect} from "react";
 
-function Settings({username, setUsername, company, setCompany}) {
+function Settings({username, setUsername, company, setCompany, sendMessage}) {
 
     const [tempUsername, setTempUsername] = useState(username);
     const [tempCompany, setTempCompany] = useState(company);
@@ -18,10 +18,12 @@ function Settings({username, setUsername, company, setCompany}) {
     const onSave = async function() {
         setCompany(tempCompany);
         setUsername(tempUsername);
-        setSavedText("Saved!")
+        setSavedText("Saved!");
         await new Promise( res => setTimeout(res, 3000) );
-        setSavedText("")
+        setSavedText("");
     }
+
+    useEffect(()=> {sendMessage("register "+username+" "+company);}, [company, username])
 
     const onReset = () => {
         setTempCompany(company);

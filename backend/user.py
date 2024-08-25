@@ -8,7 +8,9 @@ import re
 import sqlite3
 
 connections = {}
+
 def sync(f):
+    global connections
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         return asyncio.get_event_loop().run_until_complete(f(*args, **kwargs))
@@ -16,6 +18,7 @@ def sync(f):
 
 @sync
 async def callback(ch, method, properties, body):
+    global connections
     print(f"[{method.routing_key}] {body}")
     ignored_routing_keys = [
         r'^admin.change_employment$',
@@ -31,23 +34,23 @@ async def callback(ch, method, properties, body):
 
             employee_data = cursor.execute('''SELECT * FROM EMPLOYEES''')
             employee_data = [{"name":row[0], "employer": row[1], "manager": row[2], "salary": row[3], "type": row[4]} for row in employee_data]
-            conn.close()
-
-            for recipient in connections:
+            
+            for recipient in connections.keys():
                 data_packet = {
                     "type": "data",
                     "employees": employee_data,
                 }
                 if "company" in connections[recipient]:
-                    output_data = cursor.execute("""SELECT EMPLOYEES.NAME, EMPLOYER, PRIORITY FROM 
-                                                EMPLOYEE_OUTPUTS
-                                                INNER JOIN ON EMPLOYEES.NAME=EMPLOYEE_OUTPUTS.NAME
-                                                WHERE EMPLOYER=?""",(connections[recipient]["company"]))
-                    output_data = [{"name":row[0], "priority": row[1], "employer": row[2]} for row in output_data]
+                    output_data = cursor.execute("""SELECT EMPLOYEES.NAME, EMPLOYER, PRIORITY, SKILL, SALARY
+                                                FROM EMPLOYEE_OUTPUT
+                                                INNER JOIN EMPLOYEES ON EMPLOYEES.NAME=EMPLOYEE_OUTPUT.NAME
+                                                WHERE EMPLOYER=?""",(connections[recipient]["company"],))
+                    output_data = [{"name":row[0], "employer": row[1], "priority": row[2], "skill": row[3],"salary": row[4]} for row in output_data]
                     data_packet["outputs"] = output_data
-
-                await connections[recipient]["socket"].send(json.dumps(data_packet))
-                return
+                try:
+                    await connections[recipient]["socket"].send(json.dumps(data_packet))
+                except websockets.ConnectionClosedOK: pass
+            conn.close()
 
         for pattern in ignored_routing_keys:
             if re.match(pattern, method.routing_key):
@@ -60,7 +63,10 @@ async def callback(ch, method, properties, body):
         recipient = method.routing_key
         if recipient in connections:
             socket = connections[recipient]["socket"]
-            await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
+            try:
+                await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
+            except websockets.ConnectionClosedOK: pass
+
     except json.decoder.JSONDecodeError:
         pass
 
@@ -99,38 +105,36 @@ async def send_data(websocket, path):
                 await connections[sender]["socket"].send(json.dumps(data_packet))
             
             if args["message"] == 'heartbeat':
-                return
-            elif args["message"].startswith("registration"):
+                pass
+            elif args["message"].startswith("register"):
                 temp = args["message"].split(" ")
                 username = temp[1]
                 company = temp[2]
                 connections[username]["company"] = company
-                return
             
-            elif not validate_message(args["message"]):
-                return
-            
-            msg = args["message"].split(" ", 1)
-            routing_key = msg[0].lower()
-            message = msg[1]
-            if routing_key.startswith("/"):
-                routing_key = routing_key[1:]
-            
-            message = json.dumps({"sender": sender, "message": message})
+            elif validate_message(args["message"]):
+                msg = args["message"].split(" ", 1)
+                routing_key = msg[0].lower()
+                message = msg[1]
+                if routing_key.startswith("/"):
+                    routing_key = routing_key[1:]
+                
+                message = json.dumps({"sender": sender, "message": message})
 
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
-            channel = connection.channel()
-            channel.exchange_declare(exchange="broker", exchange_type="topic")
+                connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
+                channel = connection.channel()
+                channel.exchange_declare(exchange="broker", exchange_type="topic")
 
-            channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+                channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
 
-            connection.close()
+                connection.close()
 
-            await websocket.send(json.dumps({"type": "message", "sender": f"You (to {routing_key})", "message": msg[1]}))
+                await websocket.send(json.dumps({"type": "message", "sender": f"You (to {routing_key})", "message": msg[1]}))
     finally:
         connections = {key: value for key, value in connections.items() if value["socket"] != websocket}
 
 def publisher():
+    global connections
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
