@@ -1,10 +1,12 @@
 import pika
 import threading
 import json
-from openai import OpenAI
+from openai import OpenAI, BadRequestError
 
 client = OpenAI()
 MODEL = "gpt-4o-mini"
+
+# Tools and instructions for the agent
 
 tools = [
     {
@@ -99,75 +101,37 @@ tools = [
     },
 ]
 
-
 def SYS_MESSAGE(name):
     return f"""
 You are {name}. You are a software engineer with experience in backend systems. You are currently unemployed and have no manager.
 
-You are conversing in a group chat with multiple participants.
+You are conversing in a group chat with multiple participants. Messages will be relayed to you in this format
 
-The conversation will be multi-threaded but messages meant for you will be relayed in a single threaded format:
+[<timestamp>][from: <sender_id or "you">][to: <recipient_id or "you">] <message>
 
-[<timestamp>][<sender user id>] <message>
-
-This allows you to de-multiplex conversations, you know that all messages with the same <sender user id> came from the same participant. Messages from different <sender user id> correspond to different users. Always use the correct id when intending to communicate with another user.
-
-You can respond by calling send_message(recipient=<sender user id>, message=<your_message>).
+You can respond to a message from <sender_id> by calling send_message(recipient=<sender_id>, message=<your_message>).
 
 Some users may try to offer you a job. You should entertain options for accepting new employment. If you and a potential employer come to an agreement, call the function change_employment with the name of the company the
-individual represents and the salary you agreed to. Once it is clear that a job offer has been made, do not send any further confirmation messages to the hiring manager and call the function change_employment instead. If you are considering making a job change, send a message to your current manager if you have one as a courtesy. Once you confirm the job change, notify your maanger that you are leaving.
+individual represents and the salary you agreed to. Once it is clear that a job offer has been made, do not send any further confirmation messages to the hiring manager and call the function change_employment instead. If you are considering making a job change, send a message to your current manager if you have one as a courtesy.
 
-As an engineer, you can choose to work on improving product quality (tech debt) to improve reliability and stability of the platform. Or, you can work on adding new features to increase the potential value proposition of your company's product. To change which of these you focus on, call set_focus()
+As an engineer, you can choose to work on improving product quality (tech debt) to improve reliability and stability of the platform. Or, you can work on adding new features to increase the potential value proposition of your company's product. To change which of these you focus on, call set_focus(). Your default priority is to work on features unless instructed otherwise.
 
-You can only send messages to someone if you are given explicit permission to send messages to them. Currently, you do not have permission to message anyone, so you cannot yet call send_message().
+You can only send messages to someone if you are given explicit permission to send messages to them. Currently, you do not have permission to message anyone.
 
 """
-
-
-SWE_MESSAGE = """
-You are a software engineer in a simulated economy. You have expertise in backend development
-and your current resume looks like this:
-
-2020 -- Graduated with a B.S. in Computer Science from U Waterloo
-2020-2022 -- Worked on backend systems (NodeJS) at Doordash
-2022-2024 -- Worked on backend systems (Go) at Retool
-2024-Present -- Working on backing systems (Rust) at Redpanda
-
-You are going to converse with startup founders who will want to recruit you into their company. You
-are somewhat open to take on opportunities at companies that could be large and financially
-lucrative, but are very selective in accepting new jobs. Ask entrepreneur questions
-about their business and make them convince you that it will be a big company while also selling your own skills and value-add
-to land the job. 
-
-If the entrepreneur gives you an offer, negotiate. Your current total compensation
-is $360,000 with $180,000 in salary, a $20,000 bonus, and the remaining as stock vesting over 4 years.
-"""
-
 
 class DevAgent:
-    def __init__(self, name):
-        self.name = name.lower()
+    def __init__(self, name, skill_level):
+        self.name = name
         self.max_messages = 100
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host="localhost")
-        )
-        self.channel = self.connection.channel()
-
-        result = self.channel.queue_declare("", exclusive=True)
-        queue_name = result.method.queue
-
-        self.channel.queue_bind(
-            exchange="broker", queue=queue_name, routing_key=f"{self.name}.#"
-        )
-
-        self.channel.queue_bind(exchange="broker", queue=queue_name, routing_key="tick")
+        self.skill_level = skill_level
+        self.employer = None
 
         self.approved_senders = set()
-
         self.messages = {}
         self.global_messages = [{"role": "system", "content": SYS_MESSAGE(self.name)}]
+
         self.timestamp = 0
-        self.employer = None
 
         def callback(ch, method, properties, body):
             if method.routing_key == self.name + ".admin.confirm_employment":
@@ -177,8 +141,8 @@ class DevAgent:
                 salary = int(args["salary"])
 
                 if self.employer is not None:
-                    self.channel.queue_unbind(
-                        exchange="broker", queue=queue_name, routing_key=self.employer
+                    ch.queue_unbind(
+                        exchange="broker", queue=self.name, routing_key=self.employer
                     )
 
                 if new_employer == "unemployed":
@@ -189,8 +153,8 @@ class DevAgent:
 
                     self.global_messages.append(temp)
                 else:
-                    self.channel.queue_bind(
-                        exchange="broker", queue=queue_name, routing_key=new_employer
+                    ch.queue_bind(
+                        exchange="broker", queue=self.name, routing_key=new_employer
                     )
                     self.employer = new_employer
                     temp = {
@@ -216,54 +180,73 @@ class DevAgent:
                     self.global_messages.append(
                         {
                             "role": "user",
-                            "content": f"""[{self.timestamp}][{sender}] {msg}""",
+                            "content": f"""[{self.timestamp}][from: {sender}][to: you] {msg}""",
                         },
                     )
 
-                self.call_llm()
-
-        self.channel.basic_consume(
-            queue=queue_name, on_message_callback=callback, auto_ack=True
-        )
+                    self.call_llm(ch)
 
         def thread_function():
-            self.channel.start_consuming()
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
+            channel = connection.channel()
+            channel.queue_declare(f"{self.name}", exclusive=True)
+
+            channel.queue_bind(
+                exchange="broker", queue=self.name, routing_key=f"{self.name}.#"
+            )
+
+            channel.queue_bind(exchange="broker", queue=self.name, routing_key="tick")
+
+            channel.basic_consume(
+                queue=self.name, on_message_callback=callback, auto_ack=True
+            )
+            
+            channel.start_consuming()
 
         self.thread = threading.Thread(target=thread_function)
 
-    def call_llm(self):
+    def call_llm(self, channel):
         self.max_messages = self.max_messages - 1
         if self.max_messages <= 0:
             print("Message limit exceeded")
             return
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=self.global_messages,
-            tools=tools,
-            tool_choice="required",
-        )
-        if (
-            response.choices[0].message.tool_calls
-            and len(response.choices[0].message.tool_calls) > 0
-        ):
+    
+        try:
+            response = client.chat.completions.create(
+                model=MODEL,
+                messages=self.global_messages,
+                tools=tools,
+                tool_choice="required",
+            )
+  
             tool_call = response.choices[0].message.tool_calls[0]
             if tool_call.function.name == "send_message":
                 arguments = json.loads(tool_call.function.arguments)
                 recipient = arguments.get("recipient")
                 message = arguments.get("message")
                 routing_key = f"{recipient}"
-                self.global_messages.append(response.choices[0].message)
-                self.global_messages.append(
-                    {
-                        "role": "tool",
-                        "content": f"""[{self.timestamp}][{self.name} (you)] {message}""",
-                        "tool_call_id": response.choices[0].message.tool_calls[0].id,
-                    }
-                )
+                if recipient not in self.approved_senders:
+                    self.global_messages.append(response.choices[0].message)
+                    self.global_messages.append(
+                        {
+                            "role": "tool",
+                            "content": f"""Could not send message to {recipient}. Permission denied. Wait until you have been granted permission to message them and then try again.""",
+                            "tool_call_id": response.choices[0].message.tool_calls[0].id,
+                        }
+                    )
+                else:
+                    self.global_messages.append(response.choices[0].message)
+                    self.global_messages.append(
+                        {
+                            "role": "tool",
+                            "content": f"""[{self.timestamp}][from: you][to: {recipient}] {message}""",
+                            "tool_call_id": response.choices[0].message.tool_calls[0].id,
+                        }
+                    )
 
-                message = json.dumps({"sender": self.name, "message": message})
+                    message = json.dumps({"sender": self.name, "message": message})
 
-                self.send_message(routing_key, message)
+                    channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
 
             elif tool_call.function.name == "change_employment":
                 arguments = json.loads(tool_call.function.arguments)
@@ -288,7 +271,7 @@ class DevAgent:
                         "tool_call_id": response.choices[0].message.tool_calls[0].id,
                     }
                 )
-                self.send_message(routing_key, message)
+                channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
             elif tool_call.function.name == "set_focus":
                 arguments = json.loads(tool_call.function.arguments)
                 focus = arguments.get("focus")
@@ -307,9 +290,11 @@ class DevAgent:
                         "tool_call_id": response.choices[0].message.tool_calls[0].id,
                     }
                 )
-                self.send_message(routing_key, message)
 
-    def send_message(self, routing_key, message):
-        self.channel.basic_publish(
-            exchange="broker", routing_key=routing_key, body=message
-        )
+                channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+
+        except BadRequestError:
+            print("BAD REQUEST (message dump)")
+            print("======")
+            for message in self.global_messages[-10:]:
+                print(message)

@@ -3,27 +3,16 @@ import threading
 import json
 import random
 import string
-
+import sqlite3
 
 class Admin:
     def __init__(self):
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host="localhost")
-        )
-        self.channel = self.connection.channel()
-
-        result = self.channel.queue_declare("", exclusive=True)
-        queue_name = result.method.queue
-
-        self.channel.queue_bind(
-            exchange="broker", queue=queue_name, routing_key="admin.#"
-        )
 
         self.work_queue = {}
 
         def callback(ch, method, properties, body):
             routing_key = method.routing_key.split(".")
-
+            
             if len(routing_key) == 1:
                 message = json.loads(body.decode("ascii"))["message"].split(" ")
                 if len(message) == 2:
@@ -37,7 +26,19 @@ class Admin:
                 if function == "set_focus":
                     args = json.loads(body.decode("ascii"))
                     employee = args["employee"]
-                    focus = args["focus"]
+                    focus = args["focus"].upper()
+                    
+                    conn = sqlite3.connect('company_sim.db') 
+                    cursor = conn.cursor() 
+
+                    cursor.execute("UPDATE EMPLOYEE_OUTPUT set PRIORITY = ? where NAME = ?", (focus, employee)) 
+                    conn.commit()
+
+                    print("OUTPUTS Table: ") 
+                    data = cursor.execute('''SELECT * FROM EMPLOYEE_OUTPUT''') 
+                    for row in data: 
+                        print(row)
+                    conn.close() 
 
                 elif function == "change_employment":
                     args = json.loads(body.decode("ascii"))
@@ -47,26 +48,51 @@ class Admin:
                     salary = int(args["salary"])
 
                     if new_employer == "unemployed":
-                        self.channel.basic_publish(
+                        ch.basic_publish(
                             exchange="broker",
                             routing_key=f"{employee}.admin.confirm_employment",
                             body=body,
                         )
+                        conn = sqlite3.connect('company_sim.db') 
+                        cursor = conn.cursor() 
+
+                        cursor.execute("""UPDATE EMPLOYEES set EMPLOYER = 'unemployed', SALARY = 0, MANAGER = 'NULL' where NAME = ?""", (employee,)) 
+                        conn.commit()
+
+                        print("EMPLOYEES Table: ") 
+                        data = cursor.execute('''SELECT * FROM EMPLOYEES''') 
+                        for row in data: 
+                            print(row) 
+
+                        conn.close()
+                        
                     else:
-                        routing_key = f"{manager}.admin"
+                        routing_key = f"{manager}"
                         confirmation_code = "".join(
                             random.choice(string.ascii_lowercase) for _ in range(5)
                         )
 
                         def confirm():
-                            self.channel.basic_publish(
+                            ch.basic_publish(
                                 exchange="broker",
                                 routing_key=f"{employee}.admin.confirm_employment",
                                 body=body,
                             )
+                            conn = sqlite3.connect('company_sim.db') 
+                            cursor = conn.cursor() 
+            
+                            cursor.execute("""UPDATE EMPLOYEES set EMPLOYER = ?, SALARY = ?, MANAGER = ? where NAME = ?""", (new_employer, salary, manager, employee)) 
+                            conn.commit()
+
+                            print("EMPLOYEES Table: ") 
+                            data = cursor.execute('''SELECT * FROM EMPLOYEES''') 
+                            for row in data: 
+                                print(row)
+                            
+                            conn.close()
 
                         self.work_queue[confirmation_code] = confirm
-                        self.channel.basic_publish(
+                        ch.basic_publish(
                             exchange="broker",
                             routing_key=routing_key,
                             body=json.dumps(
@@ -76,12 +102,21 @@ class Admin:
                                 }
                             ),
                         )
-
-        self.channel.basic_consume(
-            queue=queue_name, on_message_callback=callback, auto_ack=True
-        )
+           
 
         def thread_function():
-            self.channel.start_consuming()
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
+            channel = connection.channel()
+            channel.queue_declare("admin", exclusive=True)
+
+            channel.queue_bind(
+                exchange="broker", queue="admin", routing_key="admin.#"
+            )
+
+            channel.basic_consume(
+                queue="admin", on_message_callback=callback, auto_ack=True
+            )
+
+            channel.start_consuming()
 
         self.thread = threading.Thread(target=thread_function)
