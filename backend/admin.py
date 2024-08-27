@@ -17,10 +17,10 @@ class Admin:
             if len(routing_key) == 1:
                 message = json.loads(body.decode("ascii"))["message"].split(" ")
                 if len(message) == 2:
-                    if message[1] in self.work_queue:
+                    if message[1].upper() in self.work_queue:
                         if message[0] == "confirm":
-                            self.work_queue[message[1]]()
-                        del self.work_queue[message[1]]
+                            self.work_queue[message[1].upper()]()
+                        del self.work_queue[message[1].upper()]
             else:
                 function = routing_key[1]
 
@@ -71,7 +71,7 @@ class Admin:
                     else:
                         routing_key = f"{manager}"
                         confirmation_code = "".join(
-                            random.choice(string.ascii_lowercase) for _ in range(5)
+                            random.choice(string.ascii_uppercase) for _ in range(3)
                         )
 
                         def confirm():

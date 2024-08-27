@@ -18,7 +18,7 @@ function App() {
   const [laborData, setLaborData] = useState({});
   const [outputData, setOutputData] = useState({});
   const [company, setCompany] = useState("");
-  const [connectionFlag, setConnectionFlag] = useState(true);
+  const [companyData, setCompanyData] = useState({});
 
   const WS_URL = "ws://127.0.0.1:8765"
 
@@ -27,7 +27,7 @@ function App() {
       {
           share: true,
           shouldReconnect: () => true,
-          onError: () => {alert("Could not send message, please try again in a few minutes!")},
+          onError: () => {},
       },
   )
 
@@ -70,14 +70,15 @@ function App() {
                   )
                 }
               
-                if ('outputs' in lastJsonMessage) {
-                setOutputData(outputData => {
+                if ('company' in lastJsonMessage) {
+                  console.log("JERE")
+                setCompanyData(companyData => {
                   const newData = {};
-                  lastJsonMessage['outputs'].forEach((record) => {
+                  lastJsonMessage['company'].forEach((record) => {
                       var innerData = {};
-                      innerData["priority"] = record["priority"];
-                      innerData["skill"] = record["skill"];
-                      innerData["salary"] = record["salary"];
+                      innerData["name"] = record["name"];
+                      innerData["cash"] = record["cash"];
+                      innerData["featues"] = record["features"];
                       newData[record["name"]] = innerData;
                     })
                     return newData;
@@ -97,7 +98,7 @@ function App() {
             <Chat username={username} messages={messages} sendMessage={customSendMessage}/>
             <Col>
               <LaborMarket data={laborData}/>
-              <MyCompany data={outputData}/>
+              <MyCompany companyData={companyData} employeeData={outputData}/>
             </Col>
           </Row>
       </Container>

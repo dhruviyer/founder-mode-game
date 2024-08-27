@@ -28,7 +28,23 @@ async def callback(ch, method, properties, body):
     ]
 
     try:
-        if method.routing_key == "data_broadcast":
+        if method.routing_key == "tick":
+            conn = sqlite3.connect('company_sim.db') 
+            cursor = conn.cursor() 
+            for recipient in connections.keys():
+                if "company" in connections[recipient]:
+                    company_data = cursor.execute("""SELECT * FROM COMPANIES 
+                                                        WHERE NAME=?""",(connections[recipient]["company"],))
+                    company_data = [{"name":row[0], "cash": row[1], "features": row[2]} for row in company_data]
+                    data_packet = {
+                            "type": "data",
+                            "company": company_data,
+                        }    
+                    conn.close()
+                    try:
+                        await connections[recipient]["socket"].send(json.dumps(data_packet))
+                    except websockets.ConnectionClosedOK: pass
+        elif method.routing_key == "data_broadcast":
             conn = sqlite3.connect('company_sim.db') 
             cursor = conn.cursor() 
 
@@ -47,6 +63,11 @@ async def callback(ch, method, properties, body):
                                                 WHERE EMPLOYER=?""",(connections[recipient]["company"],))
                     output_data = [{"name":row[0], "employer": row[1], "priority": row[2], "skill": row[3],"salary": row[4]} for row in output_data]
                     data_packet["outputs"] = output_data
+
+                    company_data = cursor.execute("""SELECT * FROM COMPANIES 
+                                                  WHERE NAME=?""",(connections[recipient]["company"],))
+                    company_data = [{"name":row[0], "cash": row[1], "features": row[2]} for row in company_data]
+                    data_packet["company"] = company_data
                 try:
                     await connections[recipient]["socket"].send(json.dumps(data_packet))
                 except websockets.ConnectionClosedOK: pass
@@ -110,7 +131,27 @@ async def send_data(websocket, path):
                 temp = args["message"].split(" ")
                 username = temp[1]
                 company = temp[2]
+                
                 connections[username]["company"] = company
+
+                conn = sqlite3.connect('company_sim.db') 
+                cursor = conn.cursor() 
+
+                cursor.execute( 
+                    """INSERT INTO COMPANIES(NAME, CASH, FEATURES) 
+                    VALUES (?, 0, 0)""", (company,)) 
+                conn.commit()
+
+                company_data = [{"name":company, "cash": 0, "features": 0}]
+                conn.close()
+
+                data_packet = {
+                    "type": "data",
+                    "company": company_data,
+                }
+
+                await connections[username]["socket"].send(json.dumps(data_packet))
+
             
             elif validate_message(args["message"]):
                 msg = args["message"].split(" ", 1)

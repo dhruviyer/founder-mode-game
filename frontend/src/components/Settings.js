@@ -19,11 +19,10 @@ function Settings({username, setUsername, company, setCompany, sendMessage}) {
         setCompany(tempCompany);
         setUsername(tempUsername);
         setSavedText("Saved!");
+        sendMessage("register "+tempUsername+" "+tempCompany);
         await new Promise( res => setTimeout(res, 3000) );
         setSavedText("");
     }
-
-    useEffect(()=> {sendMessage("register "+username+" "+company);}, [company, username])
 
     const onReset = () => {
         setTempCompany(company);

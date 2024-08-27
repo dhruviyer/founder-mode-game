@@ -1,6 +1,6 @@
 import {Col, Table} from "react-bootstrap";
 
-function MyCompany({data}) {
+function MyCompany({employeeData, companyData}) {
    
     let USDollar = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -9,7 +9,7 @@ function MyCompany({data}) {
 
     return (
         <Col style={{textAlign:'left'}} md={3}>
-            <h1>My Company</h1>
+            <h1>{"name" in companyData ? companyData["name"] : "My Company"}</h1>
             <Table striped bordered hover>
             <thead>
                 <tr>
@@ -20,12 +20,29 @@ function MyCompany({data}) {
                 </tr>
             </thead>
             <tbody>
-                {Object.keys(data).map((key) => {
+                {Object.keys(employeeData).map((key) => {
                     return (<tr key={key}>
                       <td>{key}</td>
-                      <td>{data[key]["priority"]}</td>
-                      <td>{data[key]["skill"]}</td>
-                      <td>{USDollar.format(data[key]["salary"])}</td>
+                      <td>{employeeData[key]["priority"]}</td>
+                      <td>{employeeData[key]["skill"]}</td>
+                      <td>{USDollar.format(employeeData[key]["salary"])}</td>
+                    </tr>);
+                })}
+            </tbody>
+            </Table>
+            <Table striped bordered hover>
+            <thead>
+                <tr>
+                    <th>Cash</th>
+                    <th>Features</th>
+                </tr>
+            </thead>
+            <tbody>
+                {Object.keys(companyData).map((key) => {
+                    return (<tr key={key}>
+                            <td>{USDollar.format(companyData[key]["cash"])}</td>
+                      <td>{companyData[key]["features"]}</td>
+                  
                     </tr>);
                 })}
             </tbody>
