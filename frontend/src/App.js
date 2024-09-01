@@ -20,7 +20,7 @@ function App() {
   const [company, setCompany] = useState("");
   const [companyData, setCompanyData] = useState({});
 
-  const WS_URL = "ws://127.0.0.1:8765"
+  const WS_URL = "ws://localhost:8081"
 
   const { sendJsonMessage, lastJsonMessage, readyState} = useWebSocket(
       WS_URL,

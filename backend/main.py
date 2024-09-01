@@ -2,7 +2,6 @@ from time import sleep
 from dev_agent import DevAgent
 import pika
 import threading
-from admin import Admin
 import datetime
 import sqlite3
 import sys
@@ -12,12 +11,11 @@ import sys
 agents = [("bob", 10), ("alice", 5)]
 
 # Pika connection for game clock
-connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
+connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost", port=5672))
 channel = connection.channel()
 channel.exchange_declare(exchange="broker", exchange_type="topic")
 
 # Define agents
-admin = Admin()
 agents = [DevAgent(agent[0], agent[1]) for agent in agents]
 
 # Create employees table and add agents
@@ -37,7 +35,7 @@ cursor.execute(company_records)
 for agent in agents:
     cursor.execute( 
         """INSERT INTO EMPLOYEES(NAME, EMPLOYER, MANAGER, SALARY, TYPE) 
-        VALUES (?, 'unemployed', NULL, 0, 'ENGINEER')""", (agent.name,)) 
+        VALUES (?, 'UNEMPLOYED', NULL, 0, 'ENGINEER')""", (agent.name,)) 
     cursor.execute( 
         """INSERT INTO EMPLOYEE_OUTPUT(NAME, SKILL, PRIORITY) 
         VALUES (?, ?, 'FEATURES')""", (agent.name, agent.skill_level))

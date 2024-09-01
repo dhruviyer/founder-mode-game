@@ -2,12 +2,40 @@ import pika
 import json
 import asyncio
 import websockets
+import psycopg2
 import threading
 import functools
 import re
 import sqlite3
 
 connections = {}
+
+
+def validate_message(message):
+    msg = message.split(" ", 1)
+    if len(msg) != 2:
+        return False
+    else:
+        routing_key = msg[0].lower()
+        message = msg[1]
+        if not routing_key.startswith("/"):
+            return False
+        return True
+
+def get_new_db_connection():
+    return psycopg2.connect(database="company_sim",
+                        host="db",
+                        user="admin",
+                        password="root",
+                        port="5432")
+
+def db_retrieve(operation, parameters=None):
+    conn = get_new_db_connection()
+    cursor = conn.cursor() 
+    cursor.execute(operation, parameters)
+    data = cursor.fetchall()
+    conn.close()
+    return data
 
 def sync(f):
     global connections
@@ -29,12 +57,10 @@ async def callback(ch, method, properties, body):
 
     try:
         if method.routing_key == "tick":
-            conn = sqlite3.connect('company_sim.db') 
-            cursor = conn.cursor() 
             for recipient in connections.keys():
                 if "company" in connections[recipient]:
-                    company_data = cursor.execute("""SELECT * FROM COMPANIES 
-                                                        WHERE NAME=?""",(connections[recipient]["company"],))
+                    company_data = db_retrieve("""SELECT * FROM "COMPANIES" 
+                                                        WHERE "NAME"=?""",(connections[recipient]["company"],))
                     company_data = [{"name":row[0], "cash": row[1], "features": row[2]} for row in company_data]
                     data_packet = {
                             "type": "data",
@@ -45,10 +71,8 @@ async def callback(ch, method, properties, body):
                         await connections[recipient]["socket"].send(json.dumps(data_packet))
                     except websockets.ConnectionClosedOK: pass
         elif method.routing_key == "data_broadcast":
-            conn = sqlite3.connect('company_sim.db') 
-            cursor = conn.cursor() 
 
-            employee_data = cursor.execute('''SELECT * FROM EMPLOYEES''')
+            employee_data = db_retrieve('''SELECT * FROM "EMPLOYEES"''')
             employee_data = [{"name":row[0], "employer": row[1], "manager": row[2], "salary": row[3], "type": row[4]} for row in employee_data]
             
             for recipient in connections.keys():
@@ -57,21 +81,20 @@ async def callback(ch, method, properties, body):
                     "employees": employee_data,
                 }
                 if "company" in connections[recipient]:
-                    output_data = cursor.execute("""SELECT EMPLOYEES.NAME, EMPLOYER, PRIORITY, SKILL, SALARY
-                                                FROM EMPLOYEE_OUTPUT
-                                                INNER JOIN EMPLOYEES ON EMPLOYEES.NAME=EMPLOYEE_OUTPUT.NAME
-                                                WHERE EMPLOYER=?""",(connections[recipient]["company"],))
+                    output_data = db_retrieve("""SELECT "EMPLOYEES"."NAME", "EMPLOYER", "PRIORITY", "SKILL", "SALARY"
+                                                FROM "EMPLOYEE_OUTPUT"
+                                                INNER JOIN "EMPLOYEES" ON "EMPLOYEES"."NAME"="EMPLOYEE_OUTPUT"."NAME"
+                                                WHERE "EMPLOYER"=?""",(connections[recipient]["company"],))
                     output_data = [{"name":row[0], "employer": row[1], "priority": row[2], "skill": row[3],"salary": row[4]} for row in output_data]
                     data_packet["outputs"] = output_data
 
-                    company_data = cursor.execute("""SELECT * FROM COMPANIES 
-                                                  WHERE NAME=?""",(connections[recipient]["company"],))
+                    company_data = db_retrieve("""SELECT * FROM "COMPANIES"
+                                                  WHERE "NAME"=?""",(connections[recipient]["company"],))
                     company_data = [{"name":row[0], "cash": row[1], "features": row[2]} for row in company_data]
                     data_packet["company"] = company_data
                 try:
                     await connections[recipient]["socket"].send(json.dumps(data_packet))
                 except websockets.ConnectionClosedOK: pass
-            conn.close()
 
         for pattern in ignored_routing_keys:
             if re.match(pattern, method.routing_key):
@@ -91,17 +114,6 @@ async def callback(ch, method, properties, body):
     except json.decoder.JSONDecodeError:
         pass
 
-def validate_message(message):
-    msg = message.split(" ", 1)
-    if len(msg) != 2:
-        return False
-    else:
-        routing_key = msg[0].lower()
-        message = msg[1]
-        if not routing_key.startswith("/"):
-            return False
-        return True
-
 async def send_data(websocket, path):
     global connections
     try:
@@ -111,12 +123,8 @@ async def send_data(websocket, path):
             if sender not in connections:
                 connections[sender] = {"socket":websocket}
 
-                conn = sqlite3.connect('company_sim.db') 
-                cursor = conn.cursor() 
-
-                employee_data = cursor.execute('''SELECT * FROM EMPLOYEES''')
+                employee_data = db_retrieve('''SELECT * FROM "EMPLOYEES"''')
                 employee_data = [{"name":row[0], "employer": row[1], "manager": row[2], "salary": row[3], "type": row[4]} for row in employee_data]
-                conn.close()
 
                 data_packet = {
                     "type": "data",
@@ -134,12 +142,13 @@ async def send_data(websocket, path):
                 
                 connections[username]["company"] = company
 
-                conn = sqlite3.connect('company_sim.db') 
+                conn = get_new_db_connection()
                 cursor = conn.cursor() 
 
                 cursor.execute( 
-                    """INSERT INTO COMPANIES(NAME, CASH, FEATURES) 
-                    VALUES (?, 0, 0)""", (company,)) 
+                    """INSERT INTO "COMPANIES" ("NAME", "CASH", "FEATURES") 
+                    VALUES ('?', 0, 0)""", (company,)) 
+                
                 conn.commit()
 
                 company_data = [{"name":company, "cash": 0, "features": 0}]
@@ -162,7 +171,7 @@ async def send_data(websocket, path):
                 
                 message = json.dumps({"sender": sender, "message": message})
 
-                connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
+                connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
                 channel = connection.channel()
                 channel.exchange_declare(exchange="broker", exchange_type="topic")
 
@@ -179,7 +188,7 @@ def publisher():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost"))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
     channel = connection.channel()
 
     result = channel.queue_declare("", exclusive=True)
@@ -193,8 +202,10 @@ def publisher():
 publisher_thread = threading.Thread(target=publisher)
 publisher_thread.start()
 
-start_server = websockets.serve(send_data, "localhost", 8765)
+start_server = websockets.serve(send_data, "0.0.0.0", 8080)
+
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
+
 
 publisher_thread.join()
