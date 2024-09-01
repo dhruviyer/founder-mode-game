@@ -4,6 +4,10 @@ import random
 import string
 import sqlite3
 import locale
+import threading
+from asyncio import sleep
+import psycopg2
+import datetime
 
 locale.setlocale( locale.LC_ALL, '' )
 work_queue = {}
@@ -100,6 +104,74 @@ def handle_message(ch, method, properties, body):
             handle_set_focus(body, ch)
         elif function == "change_employment":
             handle_change_employment(body, ch)
+
+def get_new_db_connection():
+    return psycopg2.connect(database="company_sim",
+                        host="db",
+                        user="admin",
+                        password="root",
+                        port="5432")
+
+def db_retrieve(operation, parameters=None):
+    conn = get_new_db_connection()
+    cursor = conn.cursor() 
+    cursor.execute(operation, parameters)
+    data = cursor.fetchall()
+    conn.close()
+    return data
+
+# main game loop function
+def tick():
+    tick_counter = 0
+    while True:
+        sleep(3)
+        data = db_retrieve("""
+                            SELECT "COMPANIES"."NAME" AS "NAME", "PRIORITY", "VALUE", "FEATURES" 
+                            FROM (
+                                SELECT "EMPLOYER", "PRIORITY", SUM("SKILL") AS "VALUE"
+                                FROM "EMPLOYEE_OUTPUT"
+                                INNER JOIN "EMPLOYEES" ON "EMPLOYEES"."NAME"="EMPLOYEE_OUTPUT"."NAME"
+                                GROUP BY "EMPLOYER", "PRIORITY") AS "TEMP"
+                            FULL JOIN "COMPANIES" ON "TEMP"."EMPLOYER"="COMPANIES"."NAME" 
+                           """)
+        companies = {}
+        for row in data:
+            if row[0] not in companies.keys():
+               companies[row[0]] = {}
+
+            companies[row[0]][row[1]] = row[2]
+            companies[row[0]]["FEATURES_TODAY"] = 0.0 if row[3] is None else row[3]
+        
+        for company in companies.keys():
+            if company == "UNEMPLOYED":
+                continue
+            quality = 0
+            features = 0
+            if "QUALITY" in companies[company]:
+                quality = companies[company]["QUALITY"]
+            if "FEATURES" in companies[company]:
+                features = companies[company]["FEATURES"]
+
+            quality = 1/(1+pow(1.5,quality))
+            temp = features
+            features = features + (1-quality)*companies[company]["FEATURES_TODAY"]
+            conn = get_new_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = ? WHERE "NAME" = '?'""", (features, company)) 
+            conn.commit()
+            conn.close()
+
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq", port=5672))
+        channel = connection.channel()
+        channel.exchange_declare(exchange="broker", exchange_type="topic")
+        channel.basic_publish(
+            exchange="broker", routing_key="tick", body=str(datetime.datetime.now())
+        )
+        connection.close()
+        tick_counter = tick_counter + 1
+
+thread = threading.Thread(target=tick)
+thread.start()
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq", port=5672))
 channel = connection.channel()

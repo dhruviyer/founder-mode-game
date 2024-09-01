@@ -10,7 +10,6 @@ import sqlite3
 
 connections = {}
 
-
 def validate_message(message):
     msg = message.split(" ", 1)
     if len(msg) != 2:
@@ -45,7 +44,7 @@ def sync(f):
     return wrapper
 
 @sync
-async def callback(ch, method, properties, body):
+async def handle_message(ch, method, properties, body):
     global connections
     print(f"[{method.routing_key}] {body}")
     ignored_routing_keys = [
@@ -114,7 +113,7 @@ async def callback(ch, method, properties, body):
     except json.decoder.JSONDecodeError:
         pass
 
-async def send_data(websocket, path):
+async def handle_user_input(websocket, path):
     global connections
     try:
         async for message in websocket:
@@ -183,7 +182,7 @@ async def send_data(websocket, path):
     finally:
         connections = {key: value for key, value in connections.items() if value["socket"] != websocket}
 
-def publisher():
+def listener():
     global connections
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -195,17 +194,16 @@ def publisher():
     queue_name = result.method.queue
 
     channel.queue_bind(exchange="broker", queue=queue_name, routing_key="#")
-    channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
+    channel.basic_consume(queue=queue_name, on_message_callback=handle_message, auto_ack=True)
 
     channel.start_consuming()
 
-publisher_thread = threading.Thread(target=publisher)
-publisher_thread.start()
+event_thread = threading.Thread(target=listener)
+event_thread.start()
 
-start_server = websockets.serve(send_data, "0.0.0.0", 8080)
+start_server = websockets.serve(handle_user_input, "0.0.0.0", 8080)
 
 asyncio.get_event_loop().run_until_complete(start_server)
 asyncio.get_event_loop().run_forever()
 
-
-publisher_thread.join()
+event_thread.join()
