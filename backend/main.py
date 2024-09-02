@@ -1,5 +1,5 @@
 from time import sleep
-from dev_agent import DevAgent
+from backend.dev_agent.dev_agent import DevAgent
 import pika
 import threading
 import datetime

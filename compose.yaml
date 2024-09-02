@@ -7,7 +7,7 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
-  
+
   user:
     image: "agent-sim-user:latest"
     container_name: "user"
@@ -64,6 +64,32 @@ services:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
       PGADMIN_DEFAULT_PASSWORD: root
     restart: unless-stopped
+
+  dev_agent_bob:
+    image: "agent-sim-dev:latest"
+    container_name: "bob"
+    build:
+      context: ./backend/dev-agent/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      NAME: bob
+      SKILL: 1
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+  
+  dev_agent_alice:
+    image: "agent-sim-dev:latest"
+    container_name: "alice"
+    build:
+      context: ./backend/dev-agent/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      NAME: alice
+      SKILL: 1
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
 
 volumes:
   pgdata: 

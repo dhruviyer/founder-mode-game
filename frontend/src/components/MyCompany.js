@@ -7,6 +7,8 @@ function MyCompany({employeeData, companyData}) {
         currency: 'USD',
     });
 
+    console.log(employeeData, companyData);
+    
     return (
         <Col style={{textAlign:'left'}} md={3}>
             <h1>{"name" in companyData ? companyData["name"] : "My Company"}</h1>
@@ -38,13 +40,10 @@ function MyCompany({employeeData, companyData}) {
                 </tr>
             </thead>
             <tbody>
-                {Object.keys(companyData).map((key) => {
-                    return (<tr key={key}>
-                            <td>{USDollar.format(companyData[key]["cash"])}</td>
-                      <td>{companyData[key]["features"]}</td>
-                  
-                    </tr>);
-                })}
+                <tr>
+                    <td>{USDollar.format(companyData["cash"])}</td>
+                    <td>{Math.round(companyData["features"] * 100) / 100}</td>
+                </tr>
             </tbody>
             </Table>
         </Col>

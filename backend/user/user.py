@@ -56,25 +56,26 @@ async def handle_message(ch, method, properties, body):
 
     try:
         if method.routing_key == "tick":
+            print("tick")
             for recipient in connections.keys():
-                if "company" in connections[recipient]:
+                if "company" in connections[recipient] and "socket" in connections[recipient]:
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES" 
-                                                        WHERE "NAME"=?""",(connections[recipient]["company"],))
+                                                        WHERE "NAME"=%s""",(connections[recipient]["company"],))
                     company_data = [{"name":row[0], "cash": row[1], "features": row[2]} for row in company_data]
                     data_packet = {
                             "type": "data",
                             "company": company_data,
                         }    
-                    conn.close()
                     try:
                         await connections[recipient]["socket"].send(json.dumps(data_packet))
                     except websockets.ConnectionClosedOK: pass
         elif method.routing_key == "data_broadcast":
-
+            print("data broadcast")
             employee_data = db_retrieve('''SELECT * FROM "EMPLOYEES"''')
             employee_data = [{"name":row[0], "employer": row[1], "manager": row[2], "salary": row[3], "type": row[4]} for row in employee_data]
             
             for recipient in connections.keys():
+                print(connections[recipient])
                 data_packet = {
                     "type": "data",
                     "employees": employee_data,
@@ -83,12 +84,12 @@ async def handle_message(ch, method, properties, body):
                     output_data = db_retrieve("""SELECT "EMPLOYEES"."NAME", "EMPLOYER", "PRIORITY", "SKILL", "SALARY"
                                                 FROM "EMPLOYEE_OUTPUT"
                                                 INNER JOIN "EMPLOYEES" ON "EMPLOYEES"."NAME"="EMPLOYEE_OUTPUT"."NAME"
-                                                WHERE "EMPLOYER"=?""",(connections[recipient]["company"],))
+                                                WHERE "EMPLOYER"=%s""",(connections[recipient]["company"],))
                     output_data = [{"name":row[0], "employer": row[1], "priority": row[2], "skill": row[3],"salary": row[4]} for row in output_data]
                     data_packet["outputs"] = output_data
 
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES"
-                                                  WHERE "NAME"=?""",(connections[recipient]["company"],))
+                                                  WHERE "NAME"=%s""",(connections[recipient]["company"],))
                     company_data = [{"name":row[0], "cash": row[1], "features": row[2]} for row in company_data]
                     data_packet["company"] = company_data
                 try:
@@ -119,7 +120,10 @@ async def handle_user_input(websocket, path):
         async for message in websocket:
             args = json.loads(message)
             sender = args["sender"]
-            if sender not in connections:
+            print(sender)
+            if sender not in connections: 
+                connections[sender] = {}
+            if "socket" not in connections[sender]:
                 connections[sender] = {"socket":websocket}
 
                 employee_data = db_retrieve('''SELECT * FROM "EMPLOYEES"''')
@@ -130,6 +134,7 @@ async def handle_user_input(websocket, path):
                     "employees": employee_data,
                 }
 
+                print(connections)
                 await connections[sender]["socket"].send(json.dumps(data_packet))
             
             if args["message"] == 'heartbeat':
@@ -139,14 +144,22 @@ async def handle_user_input(websocket, path):
                 username = temp[1]
                 company = temp[2]
                 
+                if username not in connections:
+                    connections[username] = {}
+
                 connections[username]["company"] = company
+                connections[username]["socket"] = websocket
 
                 conn = get_new_db_connection()
                 cursor = conn.cursor() 
 
+                print(username, company)
+
                 cursor.execute( 
                     """INSERT INTO "COMPANIES" ("NAME", "CASH", "FEATURES") 
-                    VALUES ('?', 0, 0)""", (company,)) 
+                    VALUES (%s, 0, 0)
+                     ON CONFLICT ("NAME")
+                     DO NOTHING""", (company,)) 
                 
                 conn.commit()
 
@@ -180,7 +193,7 @@ async def handle_user_input(websocket, path):
 
                 await websocket.send(json.dumps({"type": "message", "sender": f"You (to {routing_key})", "message": msg[1]}))
     finally:
-        connections = {key: value for key, value in connections.items() if value["socket"] != websocket}
+        connections = {key: value for key, value in connections.items() if "socket" not in value or ("socket" in value and value["socket"] != websocket)}
 
 def listener():
     global connections

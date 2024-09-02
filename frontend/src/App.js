@@ -55,8 +55,9 @@ function App() {
           } else {
             console.log(lastJsonMessage)
               if ('employees' in lastJsonMessage) {
+                console.log("here!!");
                 setLaborData(laborData => {
-                  const newData = {};
+                  var newData = {};
                   lastJsonMessage['employees'].forEach((record) => {
                       var innerData = {};
                       innerData["employer"] = record["employer"];
@@ -71,20 +72,32 @@ function App() {
                 }
               
                 if ('company' in lastJsonMessage) {
-                  console.log("JERE")
-                setCompanyData(companyData => {
-                  const newData = {};
-                  lastJsonMessage['company'].forEach((record) => {
-                      var innerData = {};
-                      innerData["name"] = record["name"];
-                      innerData["cash"] = record["cash"];
-                      innerData["featues"] = record["features"];
-                      newData[record["name"]] = innerData;
-                    })
-                    return newData;
-                  }
-                  )
+                  setCompanyData(companyData => {
+                    const record = lastJsonMessage['company'][0];
+                    var innerData = {};
+                    innerData["name"] = record["name"];
+                    innerData["cash"] = record["cash"];
+                    innerData["features"] = record["features"];
+                    return innerData;
+                    }
+                    )
                 }
+
+                if ('outputs' in lastJsonMessage) {
+                  setOutputData(outputData => {
+                    var newData = {};
+                    lastJsonMessage['outputs'].forEach((record) => {
+                        var innerData = {};
+                        innerData["name"] = record["name"];
+                        innerData["priority"] = record["priority"];
+                        innerData["skill"] = record["skill"];
+                        innerData["salary"] = record["salary"];
+                        newData[record["name"]] = innerData;
+                      })
+                      return newData;
+                    }
+                    )
+                  }
           }
       }
   }, [lastJsonMessage])

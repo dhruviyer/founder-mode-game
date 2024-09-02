@@ -6,4 +6,4 @@ RUN pip install pika psycopg2-binary
 
 COPY admin.py ./
 
-CMD ["python", "admin.py"]
+CMD ["python", "-u", "admin.py"]

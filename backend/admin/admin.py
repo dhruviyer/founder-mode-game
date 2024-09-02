@@ -2,14 +2,12 @@ import pika
 import json
 import random
 import string
-import sqlite3
-import locale
+import psycopg2
 import threading
 from asyncio import sleep
-import psycopg2
 import datetime
+import time
 
-locale.setlocale( locale.LC_ALL, '' )
 work_queue = {}
 
 def handle_set_focus(body, ch):
@@ -17,10 +15,10 @@ def handle_set_focus(body, ch):
     employee = args["employee"]
     focus = args["focus"].upper()
     
-    conn = sqlite3.connect('company_sim.db') 
+    conn = get_new_db_connection()
     cursor = conn.cursor() 
 
-    cursor.execute("UPDATE EMPLOYEE_OUTPUT set PRIORITY = ? where NAME = ?", (focus, employee)) 
+    cursor.execute("""UPDATE "EMPLOYEE_OUTPUT" set "PRIORITY" = %s WHERE "NAME" = %s""", (focus, employee)) 
     conn.commit()
     conn.close()
 
@@ -43,10 +41,12 @@ def handle_change_employment(body, ch):
             routing_key=f"{employee}.admin.confirm_employment",
             body=body,
         )
-        conn = sqlite3.connect('company_sim.db') 
+        conn = get_new_db_connection()
         cursor = conn.cursor() 
 
-        cursor.execute("""UPDATE EMPLOYEES set EMPLOYER = ?, SALARY = ?, MANAGER = ? where NAME = ?""", (new_employer, salary, manager, employee)) 
+        print(salary)
+
+        cursor.execute("""UPDATE "EMPLOYEES" SET "EMPLOYER" = %s, "SALARY" = %s, "MANAGER" = %s WHERE "NAME" = %s;""", (new_employer, salary, manager, employee)) 
         conn.commit()
         conn.close()
 
@@ -63,7 +63,7 @@ def handle_change_employment(body, ch):
         confirmation_code = "".join(
             random.choice(string.ascii_uppercase) for _ in range(3)
         )
-
+        
         def confirm():
             commit_new_employement(employee, new_employer, salary, manager)
             
@@ -74,7 +74,7 @@ def handle_change_employment(body, ch):
             body=json.dumps(
                 {
                     "sender": "admin",
-                    "message": f"Do you want to hire {employee} at {new_employer} for a salary of {locale.currency(salary, grouping=True)}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}",
+                    "message": f"Do you want to hire {employee} at {new_employer} for a salary of ${'{:20,.2f}'.format(salary)}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}",
                 }
             ),
         )
@@ -85,18 +85,26 @@ def handle_message(ch, method, properties, body):
     if len(routing_key) == 1:
         args = json.loads(body.decode("ascii"))
         message = args["message"].split(" ", 1)
-        if len(message) == 2:
-            if message[0] == "confirm":
-                if message[1].upper() in work_queue:
-                    work_queue[message[1].upper()]()
-                del work_queue[message[1].upper()]
-            elif message[0] == "echo":
-                ch.basic_publish(
-                    exchange="broker",
-                    routing_key=f"{args["sender"]}",
-                    body=json.dumps({"sender":"admin", "message":message[1]}),
-                )
-                
+        if message[0] == "confirm" and len(message) == 2:
+            if message[1].upper() in work_queue:
+                work_queue[message[1].upper()]()
+            del work_queue[message[1].upper()]
+        elif message[0] == "echo":
+            ch.basic_publish(
+                exchange="broker",
+                routing_key=f"{args["sender"]}",
+                body=json.dumps({"sender":"admin", "message":message[1]}),
+            )
+        elif message[0] == "reset":
+            print("RESET")
+            conn = get_new_db_connection()
+            cursor = conn.cursor() 
+            cursor.execute("""DELETE FROM "EMPLOYEE_OUTPUT" * """)
+            cursor.execute("""DELETE FROM "COMPANIES" * """)
+            cursor.execute("""UPDATE "EMPLOYEES" SET "MANAGER"=NULL, "EMPLOYER"='UNEMPLOYED',"SALARY"=0""")
+            conn.commit()
+            conn.close()
+                 
     else:
         function = routing_key[1]
 
@@ -124,7 +132,7 @@ def db_retrieve(operation, parameters=None):
 def tick():
     tick_counter = 0
     while True:
-        sleep(3)
+        time.sleep(3)
         data = db_retrieve("""
                             SELECT "COMPANIES"."NAME" AS "NAME", "PRIORITY", "VALUE", "FEATURES" 
                             FROM (
@@ -157,7 +165,7 @@ def tick():
             features = features + (1-quality)*companies[company]["FEATURES_TODAY"]
             conn = get_new_db_connection()
             cursor = conn.cursor()
-            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = ? WHERE "NAME" = '?'""", (features, company)) 
+            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = %s WHERE "NAME" = %s""", (features, company)) 
             conn.commit()
             conn.close()
 
@@ -169,6 +177,7 @@ def tick():
         )
         connection.close()
         tick_counter = tick_counter + 1
+
 
 thread = threading.Thread(target=tick)
 thread.start()
