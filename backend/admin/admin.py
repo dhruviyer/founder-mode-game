@@ -79,6 +79,52 @@ def handle_change_employment(body, ch):
             ),
         )
 
+def handle_investment(body, ch):
+    args = json.loads(body.decode("ascii"))
+    company = args["company"].upper()
+    investor = args["investor"].upper()
+    valuation = float(args["valuation"])
+    amount = float(args["amount"])
+
+    def confirm_investment(company, valuation, amount):
+        ch.basic_publish(
+            exchange="broker",
+            routing_key=f"{company}.admin.confirm_investment",
+            body=body,
+        )
+        conn = get_new_db_connection()
+        cursor = conn.cursor() 
+
+        cursor.execute("""UPDATE "COMPANIES" SET "CASH" = "CASH" + %s, "VALUATION"=%s WHERE "NAME"=%s""",(amount, valuation, company) ) 
+        conn.commit()
+        conn.close()
+
+        ch.basic_publish(
+            exchange="broker",
+            routing_key=f"data_broadcast",
+            body="",
+        )
+
+    routing_key = f"company.{company}"
+    confirmation_code = "".join(
+        random.choice(string.ascii_uppercase) for _ in range(3)
+    )
+    
+    def confirm():
+        confirm_investment(company, valuation, amount)
+        
+    work_queue[confirmation_code] = confirm
+    ch.basic_publish(
+        exchange="broker",
+        routing_key=routing_key,
+        body=json.dumps(
+            {
+                "sender": "admin",
+                "message": f"Do you want to take an investment from {investor} of ${'{:20,.2f}'.format(amount)} at a valuation of ${'{:20,.2f}'.format(valuation)}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}",
+            }
+        ),
+    )
+
 def handle_message(ch, method, properties, body):
     routing_key = method.routing_key.split(".")
     
@@ -104,6 +150,19 @@ def handle_message(ch, method, properties, body):
             cursor.execute("""UPDATE "EMPLOYEES" SET "MANAGER"=NULL, "EMPLOYER"='UNEMPLOYED',"SALARY"=0""")
             conn.commit()
             conn.close()
+        elif message[0] == "invest":
+            args = message[1].split(" ")
+            data = {
+                "amount": float(args[0]),
+                "company": args[1],
+                "valuation": float(args[2]),
+                "investor": args[3]
+            }
+            ch.basic_publish(
+                exchange="broker",
+                routing_key=f"admin.invest",
+                body=json.dumps(data),
+            )
                  
     else:
         function = routing_key[1]
@@ -112,6 +171,8 @@ def handle_message(ch, method, properties, body):
             handle_set_focus(body, ch)
         elif function == "change_employment":
             handle_change_employment(body, ch)
+        elif function == "invest":
+            handle_investment(body, ch)
 
 def get_new_db_connection():
     return psycopg2.connect(database="company_sim",
@@ -134,21 +195,29 @@ def tick():
     while True:
         time.sleep(3)
         data = db_retrieve("""
-                            SELECT "COMPANIES"."NAME" AS "NAME", "PRIORITY", "VALUE", "FEATURES" 
+                            SELECT "COMPANIES"."NAME" AS "NAME", "PRIORITY", "VALUE", "FEATURES", "PAYROLL"
                             FROM (
-                                SELECT "EMPLOYER", "PRIORITY", SUM("SKILL") AS "VALUE"
+                                SELECT "EMPLOYER", "PRIORITY", SUM("SKILL") AS "VALUE", SUM("EMPLOYEES"."SALARY") AS "PAYROLL"
                                 FROM "EMPLOYEE_OUTPUT"
                                 INNER JOIN "EMPLOYEES" ON "EMPLOYEES"."NAME"="EMPLOYEE_OUTPUT"."NAME"
                                 GROUP BY "EMPLOYER", "PRIORITY") AS "TEMP"
                             FULL JOIN "COMPANIES" ON "TEMP"."EMPLOYER"="COMPANIES"."NAME" 
                            """)
+        
         companies = {}
         for row in data:
-            if row[0] not in companies.keys():
-               companies[row[0]] = {}
+            company_name = row[0]
+            priority = row[1]
+            skill_value = row[2]
+            features_today = row[3]
+            payroll = 0 if row[4] is None else row[4]
 
-            companies[row[0]][row[1]] = row[2]
-            companies[row[0]]["FEATURES_TODAY"] = 0.0 if row[3] is None else row[3]
+            if company_name not in companies.keys():
+               companies[company_name] = {"PAYROLL": 0}
+
+            companies[company_name][priority] = skill_value
+            companies[company_name]["PAYROLL"] = payroll + companies[company_name]["PAYROLL"]
+            companies[company_name]["FEATURES_TODAY"] = 0.0 if features_today is None else features_today
         
         for company in companies.keys():
             if company == "UNEMPLOYED":
@@ -163,9 +232,11 @@ def tick():
             quality = 1/(1+pow(1.5,quality))
             temp = features
             features = features + (1-quality)*companies[company]["FEATURES_TODAY"]
+            payroll_spend = companies[company_name]["PAYROLL"]/52
+
             conn = get_new_db_connection()
             cursor = conn.cursor()
-            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = %s WHERE "NAME" = %s""", (features, company)) 
+            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = %s, "CASH"="CASH"-%s WHERE "NAME" = %s""", (features, payroll_spend, company)) 
             conn.commit()
             conn.close()
 

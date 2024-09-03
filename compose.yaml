@@ -32,13 +32,13 @@ services:
       timeout: 30s
       retries: 3
   
-  frontend:
-    image: "agent-sim-frontend:latest"
-    ports:
-      - 3000:3000
-    container_name: "frontend"
-    build:
-      context: ./frontend/
+  # frontend:
+  #   image: "agent-sim-frontend:latest"
+  #   ports:
+  #     - 3000:3000
+  #   container_name: "frontend"
+  #   build:
+  #     context: ./frontend/
 
   db:
     image: postgres

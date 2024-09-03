@@ -37,12 +37,14 @@ function MyCompany({employeeData, companyData}) {
                 <tr>
                     <th>Cash</th>
                     <th>Features</th>
+                    <th>Valuation</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>{USDollar.format(companyData["cash"])}</td>
                     <td>{Math.round(companyData["features"] * 100) / 100}</td>
+                    <td>{USDollar.format(companyData["valuation"])}</td>
                 </tr>
             </tbody>
             </Table>

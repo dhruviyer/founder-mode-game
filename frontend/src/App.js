@@ -55,7 +55,6 @@ function App() {
           } else {
             console.log(lastJsonMessage)
               if ('employees' in lastJsonMessage) {
-                console.log("here!!");
                 setLaborData(laborData => {
                   var newData = {};
                   lastJsonMessage['employees'].forEach((record) => {
@@ -78,6 +77,7 @@ function App() {
                     innerData["name"] = record["name"];
                     innerData["cash"] = record["cash"];
                     innerData["features"] = record["features"];
+                    innerData["valuation"] = record["valuation"];
                     return innerData;
                     }
                     )
@@ -94,7 +94,9 @@ function App() {
                         innerData["salary"] = record["salary"];
                         newData[record["name"]] = innerData;
                       })
+                      console.log(newData);
                       return newData;
+                    
                     }
                     )
                   }

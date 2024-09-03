@@ -51,17 +51,18 @@ async def handle_message(ch, method, properties, body):
         r'^admin.change_employment$',
         r'^admin.confirm$',
         r'^admin.set_focus$',
-        r'^[a-zA-Z0-9]+\.admin.confirm_employment$'
+        r'^[a-zA-Z0-9]+\.admin.confirm_employment$',
+        r'admin.invest',
+        r'^[a-zA-Z0-9]+\.admin.confirm_investment$'
     ]
 
     try:
         if method.routing_key == "tick":
-            print("tick")
             for recipient in connections.keys():
                 if "company" in connections[recipient] and "socket" in connections[recipient]:
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES" 
                                                         WHERE "NAME"=%s""",(connections[recipient]["company"],))
-                    company_data = [{"name":row[0], "cash": row[1], "features": row[2]} for row in company_data]
+                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3]} for row in company_data]
                     data_packet = {
                             "type": "data",
                             "company": company_data,
@@ -69,6 +70,7 @@ async def handle_message(ch, method, properties, body):
                     try:
                         await connections[recipient]["socket"].send(json.dumps(data_packet))
                     except websockets.ConnectionClosedOK: pass
+
         elif method.routing_key == "data_broadcast":
             print("data broadcast")
             employee_data = db_retrieve('''SELECT * FROM "EMPLOYEES"''')
@@ -90,7 +92,7 @@ async def handle_message(ch, method, properties, body):
 
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES"
                                                   WHERE "NAME"=%s""",(connections[recipient]["company"],))
-                    company_data = [{"name":row[0], "cash": row[1], "features": row[2]} for row in company_data]
+                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3]} for row in company_data]
                     data_packet["company"] = company_data
                 try:
                     await connections[recipient]["socket"].send(json.dumps(data_packet))
@@ -105,7 +107,16 @@ async def handle_message(ch, method, properties, body):
         sender = args["sender"]
         message = args["message"]
         recipient = method.routing_key
-        if recipient in connections:
+        if recipient.startswith("company"):
+            company = recipient.split(".")[1]
+            for recipient in connections.keys():
+                if "company" in connections[recipient] and "socket" in connections[recipient] and connections[recipient]["company"] == company:
+                    socket = connections[recipient]["socket"]
+                    try:
+                        await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
+                    except websockets.ConnectionClosedOK: pass
+
+        elif recipient in connections:
             socket = connections[recipient]["socket"]
             try:
                 await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
@@ -156,10 +167,10 @@ async def handle_user_input(websocket, path):
                 print(username, company)
 
                 cursor.execute( 
-                    """INSERT INTO "COMPANIES" ("NAME", "CASH", "FEATURES") 
-                    VALUES (%s, 0, 0)
+                    """INSERT INTO "COMPANIES" ("NAME", "CASH", "FEATURES", "VALUATION") 
+                    VALUES (%s, 0, 0, 0)
                      ON CONFLICT ("NAME")
-                     DO NOTHING""", (company,)) 
+                     DO UPDATE SET "CASH"=0, "FEATURES"=0, "VALUATION"=0 """, (company,)) 
                 
                 conn.commit()
 
@@ -172,7 +183,6 @@ async def handle_user_input(websocket, path):
                 }
 
                 await connections[username]["socket"].send(json.dumps(data_packet))
-
             
             elif validate_message(args["message"]):
                 msg = args["message"].split(" ", 1)

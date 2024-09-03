@@ -312,9 +312,9 @@ cursor.execute("""INSERT INTO "EMPLOYEE_OUTPUT" ("NAME", "SKILL", "PRIORITY")
 conn.commit()
 conn.close()
 
-
 connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
 channel = connection.channel()
+channel.exchange_declare(exchange="broker", exchange_type="topic")
 channel.queue_declare(f"{name}", exclusive=True)
 
 channel.queue_bind(
