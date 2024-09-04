@@ -1,12 +1,11 @@
 import {Form,
     InputGroup, 
     Col, 
-    Row,
     Button,
     Stack
     } from "react-bootstrap";
 import { Floppy, PersonCircle, ArrowClockwise, Building, Globe2} from "react-bootstrap-icons"
-import {useState, useEffect} from "react";
+import {useState} from "react";
 
 function Settings({username, setUsername, company, setCompany, sendMessage}) {
 
@@ -19,7 +18,7 @@ function Settings({username, setUsername, company, setCompany, sendMessage}) {
         setCompany(tempCompany);
         setUsername(tempUsername);
         setSavedText("Saved!");
-        sendMessage("register "+tempUsername+" "+tempCompany);
+        sendMessage("register "+tempUsername+" "+tempCompany, tempUsername);
         await new Promise( res => setTimeout(res, 3000) );
         setSavedText("");
     }

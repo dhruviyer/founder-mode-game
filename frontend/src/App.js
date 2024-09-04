@@ -31,15 +31,15 @@ function App() {
       },
   )
 
-  const customSendMessage = (message) => {
+  const customSendMessage = (message, sender=username) => {
     console.log(message, readyState);
        
-          sendJsonMessage({
-              method: "message",
-              message: message,
-              sender: username
-          });
-      
+    sendJsonMessage({
+        method: "message",
+        message: message,
+        sender: sender
+    });
+
   }
 
   useEffect(() => {
@@ -78,6 +78,7 @@ function App() {
                     innerData["cash"] = record["cash"];
                     innerData["features"] = record["features"];
                     innerData["valuation"] = record["valuation"];
+                    innerData["arr"] = record["arr"];
                     return innerData;
                     }
                     )

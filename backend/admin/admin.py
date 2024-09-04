@@ -7,8 +7,13 @@ import threading
 from asyncio import sleep
 import datetime
 import time
+import numpy as np
 
 work_queue = {}
+BETA = 20
+CHAOS = 0.25
+ACV = 2500
+SALES_PER_TICK = 1
 
 def handle_set_focus(body, ch):
     args = json.loads(body.decode("ascii"))
@@ -195,7 +200,7 @@ def tick():
     while True:
         time.sleep(3)
         data = db_retrieve("""
-                            SELECT "COMPANIES"."NAME" AS "NAME", "PRIORITY", "VALUE", "FEATURES", "PAYROLL"
+                            SELECT "COMPANIES"."NAME" AS "NAME", "PRIORITY", "VALUE", "FEATURES", "PAYROLL", "ARR"
                             FROM (
                                 SELECT "EMPLOYER", "PRIORITY", SUM("SKILL") AS "VALUE", SUM("EMPLOYEES"."SALARY") AS "PAYROLL"
                                 FROM "EMPLOYEE_OUTPUT"
@@ -211,6 +216,7 @@ def tick():
             skill_value = row[2]
             features_today = row[3]
             payroll = 0 if row[4] is None else row[4]
+            arr = 0 if row[5] is None else row[5]
 
             if company_name not in companies.keys():
                companies[company_name] = {"PAYROLL": 0}
@@ -218,8 +224,12 @@ def tick():
             companies[company_name][priority] = skill_value
             companies[company_name]["PAYROLL"] = payroll + companies[company_name]["PAYROLL"]
             companies[company_name]["FEATURES_TODAY"] = 0.0 if features_today is None else features_today
-        
+            companies[company_name]["ARR"] = arr
+
         for company in companies.keys():
+            if company is None:
+                continue
+            
             if company == "UNEMPLOYED":
                 continue
             quality = 0
@@ -230,13 +240,23 @@ def tick():
                 features = companies[company]["FEATURES"]
 
             quality = 1/(1+pow(1.5,quality))
-            temp = features
             features = features + (1-quality)*companies[company]["FEATURES_TODAY"]
-            payroll_spend = companies[company_name]["PAYROLL"]/52
+            payroll_spend = companies[company]["PAYROLL"]/52
+
+            new_arr = (1-quality)*companies[company]["ARR"]
+            added_arr = 0
+            for _ in range(SALES_PER_TICK):
+                test_value = max(int(np.random.exponential(BETA))+random.randint(-10,10), 0)
+                if(companies[company]["FEATURES_TODAY"] >= test_value):
+                    new_arr = new_arr + ACV*test_value 
+                    added_arr = added_arr + ACV*test_value 
+            
+            cash_inflow = new_arr / 52
+            net_cash = cash_inflow - payroll_spend
 
             conn = get_new_db_connection()
             cursor = conn.cursor()
-            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = %s, "CASH"="CASH"-%s WHERE "NAME" = %s""", (features, payroll_spend, company)) 
+            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = %s, "CASH"="CASH"+%s, "ARR"=%s WHERE "NAME" = %s""", (features, net_cash, new_arr, company)) 
             conn.commit()
             conn.close()
 
@@ -248,7 +268,6 @@ def tick():
         )
         connection.close()
         tick_counter = tick_counter + 1
-
 
 thread = threading.Thread(target=tick)
 thread.start()

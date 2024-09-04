@@ -65,7 +65,7 @@ services:
       PGADMIN_DEFAULT_PASSWORD: root
     restart: unless-stopped
 
-  dev_agent_bob:
+  bob:
     image: "agent-sim-dev:latest"
     container_name: "bob"
     build:
@@ -75,10 +75,10 @@ services:
         condition: service_healthy
     environment:
       NAME: bob
-      SKILL: 1
+      SKILL: 10
       OPENAI_API_KEY: ${OPENAI_API_KEY}
   
-  dev_agent_alice:
+  alice:
     image: "agent-sim-dev:latest"
     container_name: "alice"
     build:
@@ -88,7 +88,33 @@ services:
         condition: service_healthy
     environment:
       NAME: alice
-      SKILL: 1
+      SKILL: 10
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+  
+  tim:
+    image: "agent-sim-dev:latest"
+    container_name: "tim"
+    build:
+      context: ./backend/dev-agent/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      NAME: tim
+      SKILL: 10
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+  jason:
+    image: "agent-sim-dev:latest"
+    container_name: "jason"
+    build:
+      context: ./backend/dev-agent/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      NAME: jason
+      SKILL: 10
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
 volumes:

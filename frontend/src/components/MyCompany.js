@@ -1,4 +1,4 @@
-import {Col, Table} from "react-bootstrap";
+import {Col, Table, Row} from "react-bootstrap";
 
 function MyCompany({employeeData, companyData}) {
    
@@ -6,8 +6,6 @@ function MyCompany({employeeData, companyData}) {
         style: 'currency',
         currency: 'USD',
     });
-
-    console.log(employeeData, companyData);
     
     return (
         <Col style={{textAlign:'left'}} md={3}>
@@ -32,22 +30,12 @@ function MyCompany({employeeData, companyData}) {
                 })}
             </tbody>
             </Table>
-            <Table striped bordered hover>
-            <thead>
-                <tr>
-                    <th>Cash</th>
-                    <th>Features</th>
-                    <th>Valuation</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>{USDollar.format(companyData["cash"])}</td>
-                    <td>{Math.round(companyData["features"] * 100) / 100}</td>
-                    <td>{USDollar.format(companyData["valuation"])}</td>
-                </tr>
-            </tbody>
-            </Table>
+            <Col>
+                <p><b>Valuation:</b>&nbsp;{USDollar.format(companyData["valuation"])}</p>
+                <p><b>Cash:</b>&nbsp;{USDollar.format(companyData["cash"])}</p>
+                <p><b>Features:</b>&nbsp;{Math.round(companyData["features"] * 100) / 100}</p>
+                <p><b>ARR:</b>&nbsp;{USDollar.format(companyData["arr"])}</p>
+            </Col> 
         </Col>
     )
 }

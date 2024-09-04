@@ -6,7 +6,6 @@ import psycopg2
 import threading
 import functools
 import re
-import sqlite3
 
 connections = {}
 
@@ -45,8 +44,11 @@ def sync(f):
 
 @sync
 async def handle_message(ch, method, properties, body):
+    await handle_message_inner(method.routing_key, body)
+
+async def handle_message_inner(routing_key, body):
     global connections
-    print(f"[{method.routing_key}] {body}")
+    print(f"[{routing_key}] {body}")
     ignored_routing_keys = [
         r'^admin.change_employment$',
         r'^admin.confirm$',
@@ -57,12 +59,12 @@ async def handle_message(ch, method, properties, body):
     ]
 
     try:
-        if method.routing_key == "tick":
+        if routing_key == "tick":
             for recipient in connections.keys():
                 if "company" in connections[recipient] and "socket" in connections[recipient]:
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES" 
                                                         WHERE "NAME"=%s""",(connections[recipient]["company"],))
-                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3]} for row in company_data]
+                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3], "arr": row[4]} for row in company_data]
                     data_packet = {
                             "type": "data",
                             "company": company_data,
@@ -71,8 +73,7 @@ async def handle_message(ch, method, properties, body):
                         await connections[recipient]["socket"].send(json.dumps(data_packet))
                     except websockets.ConnectionClosedOK: pass
 
-        elif method.routing_key == "data_broadcast":
-            print("data broadcast")
+        elif routing_key == "data_broadcast":
             employee_data = db_retrieve('''SELECT * FROM "EMPLOYEES"''')
             employee_data = [{"name":row[0], "employer": row[1], "manager": row[2], "salary": row[3], "type": row[4]} for row in employee_data]
             
@@ -92,35 +93,35 @@ async def handle_message(ch, method, properties, body):
 
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES"
                                                   WHERE "NAME"=%s""",(connections[recipient]["company"],))
-                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3]} for row in company_data]
+                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3], "arr": row[4]} for row in company_data]
                     data_packet["company"] = company_data
                 try:
                     await connections[recipient]["socket"].send(json.dumps(data_packet))
                 except websockets.ConnectionClosedOK: pass
-
-        for pattern in ignored_routing_keys:
-            if re.match(pattern, method.routing_key):
-                print("matched", pattern)
-                return
+        else:
+            for pattern in ignored_routing_keys:
+                if re.match(pattern, routing_key):
+                    print("matched", pattern)
+                    return
             
-        args = json.loads(body.decode("ascii"))
-        sender = args["sender"]
-        message = args["message"]
-        recipient = method.routing_key
-        if recipient.startswith("company"):
-            company = recipient.split(".")[1]
-            for recipient in connections.keys():
-                if "company" in connections[recipient] and "socket" in connections[recipient] and connections[recipient]["company"] == company:
-                    socket = connections[recipient]["socket"]
-                    try:
-                        await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
-                    except websockets.ConnectionClosedOK: pass
+            args = json.loads(body.decode("ascii"))
+            sender = args["sender"]
+            message = args["message"]
+            recipient = routing_key
+            if recipient.startswith("company"):
+                company = recipient.split(".")[1]
+                for recipient in connections.keys():
+                    if "company" in connections[recipient] and "socket" in connections[recipient] and connections[recipient]["company"] == company:
+                        socket = connections[recipient]["socket"]
+                        try:
+                            await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
+                        except websockets.ConnectionClosedOK: pass
 
-        elif recipient in connections:
-            socket = connections[recipient]["socket"]
-            try:
-                await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
-            except websockets.ConnectionClosedOK: pass
+            elif recipient in connections:
+                socket = connections[recipient]["socket"]
+                try:
+                    await socket.send(json.dumps({"type": "message", "sender": sender, "message": message}))
+                except websockets.ConnectionClosedOK: pass
 
     except json.decoder.JSONDecodeError:
         pass
@@ -131,9 +132,9 @@ async def handle_user_input(websocket, path):
         async for message in websocket:
             args = json.loads(message)
             sender = args["sender"]
-            print(sender)
             if sender not in connections: 
                 connections[sender] = {}
+
             if "socket" not in connections[sender]:
                 connections[sender] = {"socket":websocket}
 
@@ -152,11 +153,9 @@ async def handle_user_input(websocket, path):
                 pass
             elif args["message"].startswith("register"):
                 temp = args["message"].split(" ")
+                print(sender)
                 username = temp[1]
                 company = temp[2]
-                
-                if username not in connections:
-                    connections[username] = {}
 
                 connections[username]["company"] = company
                 connections[username]["socket"] = websocket
@@ -167,22 +166,24 @@ async def handle_user_input(websocket, path):
                 print(username, company)
 
                 cursor.execute( 
-                    """INSERT INTO "COMPANIES" ("NAME", "CASH", "FEATURES", "VALUATION") 
-                    VALUES (%s, 0, 0, 0)
+                    """INSERT INTO "COMPANIES" ("NAME", "CASH", "FEATURES", "VALUATION", "ARR") 
+                    VALUES (%s, 100000, 0, 100000, 0)
                      ON CONFLICT ("NAME")
-                     DO UPDATE SET "CASH"=0, "FEATURES"=0, "VALUATION"=0 """, (company,)) 
+                     DO UPDATE SET "CASH"=100000, "FEATURES"=0, "VALUATION"=100000, "ARR"=0""", (company,)) 
                 
                 conn.commit()
 
-                company_data = [{"name":company, "cash": 0, "features": 0}]
+                company_data = [{"name":company, "cash": 100000, "features": 0, "valuation": 100000, "arr": 0}]
                 conn.close()
 
                 data_packet = {
                     "type": "data",
                     "company": company_data,
                 }
-
+                
                 await connections[username]["socket"].send(json.dumps(data_packet))
+
+                await handle_message_inner("data_broadcast", None)
             
             elif validate_message(args["message"]):
                 msg = args["message"].split(" ", 1)
