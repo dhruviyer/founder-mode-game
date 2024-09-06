@@ -1,15 +1,27 @@
 import './App.css';
-import Chat from "./components/Chat.js"
+
 import {
   Col,
-  Container, 
-  Row} from "react-bootstrap";
+  Container,
+  Row,
+  Nav,
+  Navbar,
+  Tab,
+  Tabs,
+} from "react-bootstrap";
+
 import 'bootstrap/dist/css/bootstrap.min.css';
 import Settings from "./components/Settings.js"
 import { useEffect, useState } from "react";
-import useWebSocket, { ReadyState } from "react-use-websocket"
+import useWebSocket from "react-use-websocket"
+
 import LaborMarket from './components/LaborMarket.js';
 import MyCompany from './components/MyCompany.js';
+import Chat from "./components/Chat.js"
+import { AppContext } from './contexts/AppContext.js';
+
+import { Route, Routes, Link } from 'react-router-dom';
+import { GearFill } from "react-bootstrap-icons"
 
 function App() {
 
@@ -31,7 +43,7 @@ function App() {
       },
   )
 
-  const customSendMessage = (message, sender=username) => {
+  const sendMessage = (message, sender=username) => {
     console.log(message, readyState);
        
     sendJsonMessage({
@@ -108,16 +120,56 @@ function App() {
 
   return (
     <div className="App">
-      <Container fluid style={{paddingTop: "1em", height:"95vh"}}>
-          <Row style={{paddingTop: "1em", height:"95vh"}}>
-            <Settings username={username} setUsername={setUsername} company={company} setCompany={setCompany} sendMessage={customSendMessage}/>
-            <Chat username={username} messages={messages} sendMessage={customSendMessage}/>
-            <Col>
-              <LaborMarket data={laborData}/>
-              <MyCompany companyData={companyData} employeeData={outputData}/>
-            </Col>
+      <Navbar bg="dark" data-bs-theme="dark">
+        <Container>
+          <Navbar.Brand href="/">Simco</Navbar.Brand>
+          <Nav className="me-auto">
+            <Link className="nav-link" to="/">Home</Link>
+            <Link className="nav-link" to="/settings"><GearFill fill='white' size='1.1em'/></Link>
+          </Nav>
+        </Container>
+      </Navbar>
+
+      <AppContext.Provider value={{
+                username, setUsername,
+                messages, setMessages,
+                company, setCompany,
+                laborData, setLaborData,
+                outputData, setOutputData,
+                companyData, setCompanyData,
+                sendMessage
+              }}>
+      <Container fluid style={{paddingTop: "1em", paddingLeft: "3em", height:"80vh"}}>
+          <Row style={{paddingTop: "1em", height:"80vh"}}>
+          <Routes>        
+            <Route path="/"  element={
+              <Row>
+                <Col>
+                  <Chat/>
+                </Col>
+                <Col md={4}>
+                <Tabs
+                    defaultActiveKey="laborMarket"
+                    className="mb-3"
+                  >
+                    <Tab eventKey="laborMarket" title="Labor Market">
+                      <LaborMarket/>
+                    </Tab>
+                    <Tab eventKey="myCompany" title="My Company">
+                    <MyCompany/>
+                    </Tab>
+                  </Tabs>
+                  
+                  
+                </Col>
+              </Row>
+              } />
+            <Route path="/settings" element={<Settings/>}/>
+          </Routes>
+            
           </Row>
       </Container>
+      </AppContext.Provider>
     </div>
   );
 }

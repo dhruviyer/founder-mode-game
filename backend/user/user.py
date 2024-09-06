@@ -167,13 +167,13 @@ async def handle_user_input(websocket, path):
 
                 cursor.execute( 
                     """INSERT INTO "COMPANIES" ("NAME", "CASH", "FEATURES", "VALUATION", "ARR") 
-                    VALUES (%s, 100000, 0, 100000, 0)
+                    VALUES (%s, 0, 0, 0, 0)
                      ON CONFLICT ("NAME")
-                     DO UPDATE SET "CASH"=100000, "FEATURES"=0, "VALUATION"=100000, "ARR"=0""", (company,)) 
+                     DO UPDATE SET "CASH"=0, "FEATURES"=0, "VALUATION"=0, "ARR"=0""", (company,)) 
                 
                 conn.commit()
 
-                company_data = [{"name":company, "cash": 100000, "features": 0, "valuation": 100000, "arr": 0}]
+                company_data = [{"name":company, "cash": 0, "features": 0, "valuation": 0, "arr": 0}]
                 conn.close()
 
                 data_packet = {
@@ -216,6 +216,7 @@ def listener():
 
     result = channel.queue_declare("", exclusive=True)
     queue_name = result.method.queue
+    channel.exchange_declare(exchange="broker", exchange_type="topic")
 
     channel.queue_bind(exchange="broker", queue=queue_name, routing_key="#")
     channel.basic_consume(queue=queue_name, on_message_callback=handle_message, auto_ack=True)

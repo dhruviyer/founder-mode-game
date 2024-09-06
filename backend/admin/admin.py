@@ -19,11 +19,15 @@ def handle_set_focus(body, ch):
     args = json.loads(body.decode("ascii"))
     employee = args["employee"]
     focus = args["focus"].upper()
+    skill = int(args["skill"])
     
     conn = get_new_db_connection()
     cursor = conn.cursor() 
 
-    cursor.execute("""UPDATE "EMPLOYEE_OUTPUT" set "PRIORITY" = %s WHERE "NAME" = %s""", (focus, employee)) 
+    cursor.execute("""INSERT INTO "EMPLOYEE_OUTPUT" ("NAME", "SKILL", "PRIORITY")
+                   VALUES (%s, %s, %s)
+                   ON CONLICT ("NAME")
+                   DO UPDATE SET "PRIORITY" = %s WHERE "NAME" = %s""", (employee, skill, focus, focus, employee)) 
     conn.commit()
     conn.close()
 
@@ -102,6 +106,27 @@ def handle_investment(body, ch):
 
         cursor.execute("""UPDATE "COMPANIES" SET "CASH" = "CASH" + %s, "VALUATION"=%s WHERE "NAME"=%s""",(amount, valuation, company) ) 
         conn.commit()
+
+
+        pre_money = valuation - amount
+        data = db_retrieve("""SELECT SUM("SHARES") FROM "CAP_TABLE"
+                           WHERE "COMPANY"=%s
+                           GROUP BY "COMPANY" """, (company, ))
+        num_shares = 0
+        for row in data:
+            num_shares += row[0]
+        
+        PPS = 1
+        if num_shares != 0:
+            PPS = pre_money / num_shares
+
+        shares = amount / PPS
+
+        cursor.execute("""INSERT INTO "CAP_TABLE" ("INVESTOR", "COMPANY", "AMOUNT", "PPS", "SHARES", "PRE") 
+                       VALUES (%s, %s, %s, %s, %s, %s)""",(investor, company, amount, PPS, shares, valuation - amount ) ) 
+        conn.commit()
+        
+
         conn.close()
 
         ch.basic_publish(
@@ -125,7 +150,7 @@ def handle_investment(body, ch):
         body=json.dumps(
             {
                 "sender": "admin",
-                "message": f"Do you want to take an investment from {investor} of ${'{:20,.2f}'.format(amount)} at a valuation of ${'{:20,.2f}'.format(valuation)}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}",
+                "message": f"Do you want to take an investment from {investor} of ${'{:20,.2f}'.format(amount)} at a post-money valuation of ${'{:20,.2f}'.format(valuation)}? Send me back the word 'confirm' or 'deny' and this confirmation code: {confirmation_code}",
             }
         ),
     )
@@ -152,6 +177,7 @@ def handle_message(ch, method, properties, body):
             cursor = conn.cursor() 
             cursor.execute("""DELETE FROM "EMPLOYEE_OUTPUT" * """)
             cursor.execute("""DELETE FROM "COMPANIES" * """)
+            cursor.execute("""DELETE FROM "CAP_TABLE" *""")
             cursor.execute("""UPDATE "EMPLOYEES" SET "MANAGER"=NULL, "EMPLOYER"='UNEMPLOYED',"SALARY"=0""")
             conn.commit()
             conn.close()
@@ -284,5 +310,40 @@ channel.queue_bind(
 channel.basic_consume(
     queue="admin", on_message_callback=handle_message, auto_ack=True
 )
+
+conn = get_new_db_connection()
+cursor = conn.cursor()
+cursor.execute("""
+               CREATE TABLE IF NOT EXISTS "CAP_TABLE" (
+                "INVESTOR" VARCHAR(255),
+               "COMPANY" VARCHAR(255),
+               "AMOUNT" double precision,
+               "PPS" double precision,
+               "SHARES" double precision,
+               "PRE" double precision
+               )""") 
+cursor.execute("""
+               CREATE TABLE IF NOT EXISTS "COMPANIES" (
+               "NAME" VARCHAR(255),
+               "CASH" double precision,
+               "FEATURES" double precision,
+               "VALUATION" double precision,
+               "ARR" double precision
+               )""") 
+cursor.execute("""
+               CREATE TABLE IF NOT EXISTS "EMPLOYEES" (
+               "NAME" VARCHAR(255),
+               "EMPLOYER" VARCHAR(255),
+               "MANAGER" VARCHAR(255),
+               "SALARY" integer,
+               "TYPE" VARCHAR(255)
+               )""") 
+cursor.execute("""
+               CREATE TABLE IF NOT EXISTS "EMPLOYEE_OUTPUT" (
+               "NAME" VARCHAR(255),
+               "SKILL" integer,
+               "PRIORITY" VARCHAR(255)
+               )""") 
+conn.commit()
 
 channel.start_consuming()

@@ -1,15 +1,33 @@
-import {Col, Table, Row} from "react-bootstrap";
+import {Col, Table} from "react-bootstrap";
+import { useContext } from "react";
+import { AppContext } from "../contexts/AppContext";
 
-function MyCompany({employeeData, companyData}) {
+function MyCompany() {
+
+    const {outputData, companyData} = useContext(AppContext);
    
     let USDollar = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
     });
-    
+
     return (
-        <Col style={{textAlign:'left'}} md={3}>
-            <h1>{"name" in companyData ? companyData["name"] : "My Company"}</h1>
+        <Col style={{textAlign:'left'}}>
+            <h1 className="mb-3">{"name" in companyData ? companyData["name"] : "My Company"}</h1>
+            <Table>
+                <tr>
+                    <td><b>Valuation:</b></td>
+                    <td>{USDollar.format(companyData["valuation"])}</td>
+                    <td><b>Cash:</b></td>
+                    <td>{USDollar.format(companyData["cash"])}</td>
+                </tr>
+                <tr>
+                <td><b>Features:</b></td>
+                <td>{Math.round(companyData["features"] * 100) / 100}</td>
+                <td><b>ARR:</b></td>
+                <td>{USDollar.format(companyData["arr"])}</td>
+                </tr>
+            </Table>
             <Table striped bordered hover>
             <thead>
                 <tr>
@@ -20,22 +38,18 @@ function MyCompany({employeeData, companyData}) {
                 </tr>
             </thead>
             <tbody>
-                {Object.keys(employeeData).map((key) => {
+                {Object.keys(outputData).length === 0 ? <tr><td colSpan={4}><i>No Data.</i></td></tr> :
+                
+                Object.keys(outputData).map((key) => {
                     return (<tr key={key}>
                       <td>{key}</td>
-                      <td>{employeeData[key]["priority"]}</td>
-                      <td>{employeeData[key]["skill"]}</td>
-                      <td>{USDollar.format(employeeData[key]["salary"])}</td>
+                      <td>{outputData[key]["priority"]}</td>
+                      <td>{outputData[key]["skill"]}</td>
+                      <td>{USDollar.format(outputData[key]["salary"])}</td>
                     </tr>);
                 })}
             </tbody>
             </Table>
-            <Col>
-                <p><b>Valuation:</b>&nbsp;{USDollar.format(companyData["valuation"])}</p>
-                <p><b>Cash:</b>&nbsp;{USDollar.format(companyData["cash"])}</p>
-                <p><b>Features:</b>&nbsp;{Math.round(companyData["features"] * 100) / 100}</p>
-                <p><b>ARR:</b>&nbsp;{USDollar.format(companyData["arr"])}</p>
-            </Col> 
         </Col>
     )
 }

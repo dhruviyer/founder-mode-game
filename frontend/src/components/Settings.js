@@ -4,15 +4,21 @@ import {Form,
     Button,
     Stack
     } from "react-bootstrap";
-import { Floppy, PersonCircle, ArrowClockwise, Building, Globe2} from "react-bootstrap-icons"
-import {useState} from "react";
+import { Floppy, PersonCircle, ArrowClockwise, Building} from "react-bootstrap-icons"
 
-function Settings({username, setUsername, company, setCompany, sendMessage}) {
+import {useState, useContext} from "react";
+import { AppContext } from "../contexts/AppContext";
+
+function Settings() {
+
+    const {username, setUsername, company, setCompany, sendMessage} = useContext(AppContext);
+    console.log(username);
 
     const [tempUsername, setTempUsername] = useState(username);
     const [tempCompany, setTempCompany] = useState(company);
 
     const [savedText, setSavedText] = useState("");
+
 
     const onSave = async function() {
         setCompany(tempCompany);
@@ -29,7 +35,7 @@ function Settings({username, setUsername, company, setCompany, sendMessage}) {
     }
 
     return (
-        <Col style={{textAlign:'left', borderRight: "3px solid"}} md={3}>
+        <Col style={{textAlign:'left'}} md={3}>
         <h1>Settings</h1>
             <InputGroup className="mb-3 mt-3">
                 <InputGroup.Text id="basic-addon1"><PersonCircle/></InputGroup.Text>

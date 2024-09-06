@@ -270,6 +270,7 @@ def call_llm(channel):
                 {
                     "focus": focus,
                     "employee": name,
+                    "skill": skill_level
                 }
             )
             global_messages.append(response.choices[0].message)
