@@ -1,4 +1,4 @@
-import { Form, InputGroup, Col, Stack } from "react-bootstrap";
+import { Container } from "react-bootstrap";
 
 import {
   Card,
@@ -25,7 +25,6 @@ import { AppContext } from "../contexts/AppContext";
 function Settings() {
   const { username, setUsername, company, setCompany, sendMessage } =
     useContext(AppContext);
-  console.log(username);
 
   const [tempUsername, setTempUsername] = useState(username);
   const [tempCompany, setTempCompany] = useState(company);
@@ -37,6 +36,8 @@ function Settings() {
     setUsername(tempUsername);
     setSavedText("Saved!");
     sendMessage("register " + tempUsername + " " + tempCompany, tempUsername);
+    localStorage.setItem("username", tempUsername);
+    localStorage.setItem("company", tempCompany);
     await new Promise((res) => setTimeout(res, 3000));
     setSavedText("");
   };
@@ -47,48 +48,53 @@ function Settings() {
   };
 
   return (
-    <Card className="w-[350px] text-foreground">
-      <CardHeader>
-        <CardTitle>Settings</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form>
-          <div className="grid items-center gap-4">
-            <div className="flex flex-col space-y-1.5">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                placeholder="username"
-                aria-label="Message"
-                id="message"
-                value={tempUsername}
-                onChange={(event) => {
-                  setTempUsername(event.target.value);
-                }}
-              />
+    <Container>
+      <Card className="w-[350px] text-foreground">
+        <CardHeader>
+          <CardTitle>Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form>
+            <div className="grid items-center gap-4">
+              <div className="flex flex-col space-y-1.5">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  placeholder="username"
+                  aria-label="Message"
+                  id="message"
+                  value={tempUsername}
+                  onChange={(event) => {
+                    setTempUsername(event.target.value);
+                  }}
+                />
+              </div>
+              <div className="flex flex-col space-y-1.5">
+                <Label htmlFor="company">Company</Label>
+                <Input
+                  placeholder="company"
+                  aria-label="Message"
+                  id="message"
+                  value={tempCompany.toUpperCase()}
+                  onChange={(event) => {
+                    setTempCompany(event.target.value.toUpperCase());
+                  }}
+                />
+              </div>
             </div>
-            <div className="flex flex-col space-y-1.5">
-              <Label htmlFor="company">Company</Label>
-              <Input
-                placeholder="company"
-                aria-label="Message"
-                id="message"
-                value={tempCompany.toUpperCase()}
-                onChange={(event) => {
-                  setTempCompany(event.target.value.toUpperCase());
-                }}
-              />
-            </div>
-          </div>
-        </form>
-      </CardContent>
+          </form>
+        </CardContent>
 
-      <CardFooter className="flex justify-between">
-        <Button onClick={onReset} variant="outline danger">
-          Reset
-        </Button>
-        <Button onClick={onSave}>Save</Button>
-      </CardFooter>
-    </Card>
+        <CardFooter className="flex justify-between">
+          <Button onClick={onReset} variant="outline danger">
+            Reset
+          </Button>
+          <div>
+            <Label className="mr-2">{savedText}</Label>
+            <Button onClick={onSave}>Save</Button>
+          </div>
+        </CardFooter>
+      </Card>
+    </Container>
   );
 }
 

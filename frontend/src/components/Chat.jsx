@@ -21,26 +21,57 @@ function Chat() {
 
   const [chat, setChat] = useState("");
 
+  const [chats, setChats] = useState({
+    "(New Chat)": {
+      messages: [],
+      read: true,
+    },
+    admin: {
+      messages: [],
+      read: true,
+    },
+  });
+
   const refreshChats = () => {
     let newChats = {
-      "(New Chat)": [],
-      admin: [],
+      "(New Chat)": {
+        messages: [],
+        read: true,
+      },
+      admin: {
+        messages: [],
+        read: true,
+      },
     };
 
     messages.forEach((msg) => {
       let _chat = msg.sender.replace("You (to ", "").replace(")", "");
       if (!(_chat in newChats)) {
-        newChats[_chat] = [];
+        newChats[_chat] = {
+          messages: [],
+          read: true,
+        };
       }
-      newChats[_chat].push({
+      newChats[_chat]["messages"].push({
         sender: msg.sender.startsWith("You") ? "You" : msg.sender,
         message: msg.message,
+      });
+
+      Object.keys(chats).forEach((chat) => {
+        if (!newChats[chat]) {
+          return;
+        }
+        if (chats[chat]["messages"] != newChats[chat]["messages"]) {
+          newChats[chat]["read"] =
+            !newChats[chat]["messages"].at(-1) ||
+            newChats[chat]["messages"].at(-1).sender == "You";
+        } else {
+          newChats[chat]["read"] = true;
+        }
       });
     });
     return newChats;
   };
-
-  const [chats, setChats] = useState(refreshChats());
 
   const onClick = (event) => {
     if (chat !== "(New Chat)") {
@@ -76,6 +107,13 @@ function Chat() {
           inputRef.current?.focus();
         } else {
           onClick();
+        }
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        if (filteredCommands[selectedIndex]) {
+          setMessage("/" + filteredCommands[selectedIndex].name + " ");
+          setShowCommands(false);
+          inputRef.current?.focus();
         }
       }
     } else if (e.key === "Enter") {
@@ -115,45 +153,61 @@ function Chat() {
 
   return (
     <div className="text-foreground text-left">
-      <Row className="border-[5px] border-solid bg-background p-3 rounded-3xl min-h-[60vh]">
+      <Row className="border-[5px] border-solid bg-background p-3 min-h-[60vh]">
         <Col md={4}>
-          <h1 className="mb-5">Chat</h1>
+          <h1 className="mb-5 text-4xl font-extrabold tracking-tight">Chat</h1>
           <Table>
-            <TableBody>
-              {chats &&
-                Object.keys(chats).map((chatName) => {
-                  return (
-                    <TableRow className="border-none">
-                      <TableCell
-                        onClick={() => {
-                          setChat(chatName);
-                          setShowCommands(false);
-                        }}
-                        className={`rounded border-none ${chatName === chat ? "bg-muted" : ""}`}
-                      >
-                        <p>{chatName}</p>
-                        <i>
-                          {chats[chatName].at(-1) &&
-                            (chats[chatName].at(-1).sender === "You"
-                              ? "You: "
-                              : "") + chats[chatName].at(-1).message}
-                        </i>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-            </TableBody>
+            <ScrollArea className="h-[40vh]">
+              <TableBody>
+                {chats &&
+                  Object.keys(chats).map((chatName) => {
+                    return (
+                      <TableRow className="border-none rounded-3xl">
+                        <TableCell
+                          onClick={() => {
+                            setChat(chatName);
+                            setShowCommands(false);
+
+                            let new_chats = { ...chats };
+                            new_chats[chatName]["read"] = true;
+                            setChats(new_chats);
+                          }}
+                          className={`rounded border-none ${chatName === chat ? "bg-muted" : ""}`}
+                        >
+                          <p>{chatName}</p>
+                          <p
+                            className={
+                              chats[chatName]["read"]
+                                ? "font-thin"
+                                : "font-bold "
+                            }
+                          >
+                            {chats[chatName]["messages"].at(-1) &&
+                              (
+                                (chats[chatName]["messages"].at(-1).sender ===
+                                "You"
+                                  ? "You: "
+                                  : "") +
+                                chats[chatName]["messages"].at(-1).message
+                              ).slice(0, 30) + "..."}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+              </TableBody>
+            </ScrollArea>
           </Table>
         </Col>
-        <Col className="border-[5px] border-solid bg-background rounded-3xl min-h-[60vh]">
-          <div className="w-full pb-3 px-1 min-h-[60vh] max-h-[60vh] flex flex-col justify-end">
+        <Col className="border-[5px] border-solid bg-background rounded-3xl min-h-[77vh]">
+          <div className="w-full pb-3 px-1 min-h-[77vh] max-h-[77vh] flex flex-col justify-end">
             <ListGroup
               className=" bg-transparent text-foreground"
               style={{ overflowY: "auto" }}
             >
               {chats &&
                 chats[chat] &&
-                chats[chat].map((message, index) => {
+                chats[chat]["messages"].map((message, index) => {
                   return (
                     <ListGroup.Item
                       key={index}

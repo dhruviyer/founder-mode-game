@@ -21,7 +21,7 @@ function MyCompany() {
 
   return (
     <Col className="text-foreground text-left">
-      <h1 className="mb-3">
+      <h1 className="mb-3 text-4xl font-extrabold tracking-tight">
         {"name" in companyData ? companyData["name"] : "My Company"}
       </h1>
       <div className="">

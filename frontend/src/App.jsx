@@ -38,11 +38,13 @@ import {
 import { ThemeProvider } from "@/components/theme-provider";
 
 function App() {
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(
+    localStorage.getItem("username") || ""
+  );
   const [messages, setMessages] = useState([]);
   const [laborData, setLaborData] = useState({});
   const [outputData, setOutputData] = useState({});
-  const [company, setCompany] = useState("");
+  const [company, setCompany] = useState(localStorage.getItem("company") || "");
   const [companyData, setCompanyData] = useState({});
 
   const WS_URL = "ws://localhost:8081";
@@ -53,12 +55,21 @@ function App() {
       share: true,
       shouldReconnect: () => true,
       onError: () => {},
+      onOpen: () => {
+        if (localStorage.getItem("company")) {
+          sendMessage(
+            "register " +
+              localStorage.getItem("username") +
+              " " +
+              localStorage.getItem("company"),
+            localStorage.getItem("username")
+          );
+        }
+      },
     }
   );
 
   const sendMessage = (message, sender = username) => {
-    console.log(message, readyState);
-
     sendJsonMessage({
       method: "message",
       message: message,
@@ -176,43 +187,39 @@ function App() {
             sendMessage,
           }}
         >
-          <Container>
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <Row>
-                    <Col>
-                      <Chat />
-                    </Col>
-                    <Col md={6}>
-                      <Tabs
-                        defaultValue="laborMarket"
-                        className="border-[5px] border-solid bg-background py-3 px-4 rounded-3xl min-h-[67vh] max-h-[67vh]"
-                      >
-                        <TabsList className="mb-3">
-                          <TabsTrigger value="laborMarket">
-                            Labor Market
-                          </TabsTrigger>
-                          <TabsTrigger value="myCompany">
-                            My Company
-                          </TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="laborMarket">
-                          <LaborMarket />
-                        </TabsContent>
-                        <TabsContent value="myCompany">
-                          {" "}
-                          <MyCompany />
-                        </TabsContent>
-                      </Tabs>
-                    </Col>
-                  </Row>
-                }
-              />
-              <Route path="/settings" element={<Settings />} />
-            </Routes>
-          </Container>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                <Row className="px-4">
+                  <Col>
+                    <Chat />
+                  </Col>
+                  <Col md={5}>
+                    <Tabs
+                      defaultValue="laborMarket"
+                      className="border-[5px] border-solid bg-background py-3 px-4 rounded-3xl min-h-[83vh] max-h-[83vh]"
+                    >
+                      <TabsList className="mb-3">
+                        <TabsTrigger value="laborMarket">
+                          Labor Market
+                        </TabsTrigger>
+                        <TabsTrigger value="myCompany">My Company</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="laborMarket">
+                        <LaborMarket />
+                      </TabsContent>
+                      <TabsContent value="myCompany">
+                        {" "}
+                        <MyCompany />
+                      </TabsContent>
+                    </Tabs>
+                  </Col>
+                </Row>
+              }
+            />
+            <Route path="/settings" element={<Settings />} />
+          </Routes>
         </AppContext.Provider>
       </div>
     </ThemeProvider>
