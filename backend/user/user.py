@@ -74,8 +74,9 @@ async def handle_message_inner(routing_key, body):
                     except websockets.ConnectionClosedOK: pass
 
         elif routing_key == "data_broadcast":
-            employee_data = db_retrieve('''SELECT * FROM "EMPLOYEES"''')
-            employee_data = [{"name":row[0], "employer": row[1], "manager": row[2], "salary": row[3], "type": row[4]} for row in employee_data]
+            employee_data = db_retrieve('''SELECT "EMPLOYEES"."NAME", "EMPLOYER", "SALARY", "TYPE", "SKILL" FROM "EMPLOYEES"
+                                        INNER JOIN "EMPLOYEE_OUTPUT" ON "EMPLOYEES"."NAME" = "EMPLOYEE_OUTPUT"."NAME"''')
+            employee_data = [{"name":row[0], "employer": row[1], "salary": row[2], "type": row[3], "skill": row[4]} for row in employee_data]
             
             for recipient in connections.keys():
                 print(connections[recipient])

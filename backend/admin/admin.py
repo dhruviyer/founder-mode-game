@@ -53,8 +53,6 @@ def handle_change_employment(body, ch):
         conn = get_new_db_connection()
         cursor = conn.cursor() 
 
-        print(salary)
-
         cursor.execute("""UPDATE "EMPLOYEES" SET "EMPLOYER" = %s, "SALARY" = %s, "MANAGER" = %s WHERE "NAME" = %s;""", (new_employer, salary, manager, employee)) 
         conn.commit()
         conn.close()
@@ -172,15 +170,20 @@ def handle_message(ch, method, properties, body):
                 body=json.dumps({"sender":"admin", "message":message[1]}),
             )
         elif message[0] == "reset":
-            print("RESET")
             conn = get_new_db_connection()
             cursor = conn.cursor() 
+            cursor.execute("""DELETE FROM "EMPLOYEES" * """)
             cursor.execute("""DELETE FROM "EMPLOYEE_OUTPUT" * """)
             cursor.execute("""DELETE FROM "COMPANIES" * """)
             cursor.execute("""DELETE FROM "CAP_TABLE" *""")
             cursor.execute("""UPDATE "EMPLOYEES" SET "MANAGER"=NULL, "EMPLOYER"='UNEMPLOYED',"SALARY"=0""")
             conn.commit()
             conn.close()
+            ch.basic_publish(
+                exchange="broker",
+                routing_key=f"admin.reset",
+                body=""
+            )
         elif message[0] == "invest":
             args = message[1].split(" ")
             data = {

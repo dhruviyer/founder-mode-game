@@ -57,57 +57,69 @@ services:
       PGADMIN_DEFAULT_PASSWORD: root
     restart: unless-stopped
 
-  bob:
-    image: "agent-sim-dev:latest"
-    container_name: "bob"
+  agents:
+    image: "agent-sim-multiplexed-dev:latest"
+    container_name: "agents"
     build:
-      context: ./backend/dev-agent/
+      context: ./backend/multiplexed-agent/
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
-      NAME: bob
-      SKILL: 10
+      NUM_AGENTS: 3
       OPENAI_API_KEY: ${OPENAI_API_KEY}
   
-  alice:
-    image: "agent-sim-dev:latest"
-    container_name: "alice"
-    build:
-      context: ./backend/dev-agent/
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      NAME: alice
-      SKILL: 10
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+  # bob:
+  #   image: "agent-sim-dev:latest"
+  #   container_name: "bob"
+  #   build:
+  #     context: ./backend/dev-agent/
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #     NAME: bob
+  #     SKILL: 10
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
   
-  tim:
-    image: "agent-sim-dev:latest"
-    container_name: "tim"
-    build:
-      context: ./backend/dev-agent/
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      NAME: tim
-      SKILL: 10
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+  # alice:
+  #   image: "agent-sim-dev:latest"
+  #   container_name: "alice"
+  #   build:
+  #     context: ./backend/dev-agent/
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #     NAME: alice
+  #     SKILL: 10
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
+  
+  # tim:
+  #   image: "agent-sim-dev:latest"
+  #   container_name: "tim"
+  #   build:
+  #     context: ./backend/dev-agent/
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #     NAME: tim
+  #     SKILL: 10
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
 
-  jason:
-    image: "agent-sim-dev:latest"
-    container_name: "jason"
-    build:
-      context: ./backend/dev-agent/
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      NAME: jason
-      SKILL: 10
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+  # jason:
+  #   image: "agent-sim-dev:latest"
+  #   container_name: "jason"
+  #   build:
+  #     context: ./backend/dev-agent/
+  #   depends_on:
+  #     rabbitmq:
+  #       condition: service_healthy
+  #   environment:
+  #     NAME: jason
+  #     SKILL: 10
+  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
 
 volumes:
   pgdata: 
