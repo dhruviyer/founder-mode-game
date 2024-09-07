@@ -268,7 +268,7 @@ class Agent():
                     {
                         "focus": focus,
                         "employee": self.name,
-                        "skill": skill_level
+                        "skill": self.skill_level
                     }
                 )
                 self.global_messages.append(response.choices[0].message)

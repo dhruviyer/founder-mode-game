@@ -19,7 +19,7 @@ function MyCompany() {
   });
 
   return (
-    <Col style={{ textAlign: "left" }}>
+    <Col className="dark text-foreground text-left">
       <h1 className="mb-3">
         {"name" in companyData ? companyData["name"] : "My Company"}
       </h1>

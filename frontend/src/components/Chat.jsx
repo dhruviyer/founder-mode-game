@@ -5,6 +5,14 @@ import { AppContext } from "../contexts/AppContext.jsx";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 function Chat() {
   const { messages, sendMessage } = useContext(AppContext);
@@ -100,35 +108,38 @@ function Chat() {
   }, [message]);
 
   return (
-    <div style={{ textAlign: "left" }}>
-      <h1>Chat</h1>
+    <div className="dark text-foreground text-left">
+      <h1 className="mb-5">Chat</h1>
       <Row>
         <Col md={5}>
-          <ListGroup>
-            {chats &&
-              Object.keys(chats).map((chatName) => {
-                return (
-                  <ListGroup.Item
-                    key={chatName}
-                    action
-                    active={chatName === chat}
-                    onClick={() => {
-                      setChat(chatName);
-                      setShowCommands(false);
-                    }}
-                  >
-                    {chatName}
-                    <br></br>
-                    <i>
-                      {chats[chatName].at(-1) &&
-                        (chats[chatName].at(-1).sender === "You"
-                          ? "You: "
-                          : "") + chats[chatName].at(-1).message}
-                    </i>
-                  </ListGroup.Item>
-                );
-              })}
-          </ListGroup>
+          <Table>
+            <TableBody>
+              {chats &&
+                Object.keys(chats).map((chatName) => {
+                  return (
+                    <TableRow className="border-none">
+                      <TableCell
+                        onClick={() => {
+                          setChat(chatName);
+                          setShowCommands(false);
+                        }}
+                        className={
+                          "rounded-lg " + (chatName === chat && "bg-accent")
+                        }
+                      >
+                        <p>{chatName}</p>
+                        <i>
+                          {chats[chatName].at(-1) &&
+                            (chats[chatName].at(-1).sender === "You"
+                              ? "You: "
+                              : "") + chats[chatName].at(-1).message}
+                        </i>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+            </TableBody>
+          </Table>
         </Col>
         <Col>
           <div
@@ -136,7 +147,7 @@ function Chat() {
             className="w-full p-4 flex flex-col justify-end"
           >
             <ListGroup
-              className=" bg-gray-900"
+              className=" bg-transparent text-foreground"
               style={{ maxHeight: "50vh", overflowY: "auto" }}
             >
               {chats &&
@@ -145,7 +156,7 @@ function Chat() {
                   return (
                     <ListGroup.Item
                       key={index}
-                      className="bg-gray-900 border-0 text-start"
+                      className="bg-transparent !text-foreground border-0 text-start"
                     >
                       <span
                         className={
@@ -162,7 +173,7 @@ function Chat() {
                 })}
               <ListGroup.Item
                 style={{ display: "none" }}
-                className="border-0 text-start"
+                className="border-0 text-start "
               >
                 <span
                   className=" bg-gray-900"
@@ -175,14 +186,14 @@ function Chat() {
             <div className="w-full relative">
               <div className="absolute bottom-full w-full mb-2">
                 {showCommands && (
-                  <ScrollArea className="w-full bg-white border border-gray-700 rounded-lg shadow-lg max-h-60">
+                  <ScrollArea className="w-full dark rounded-lg shadow-lg max-h-60">
                     {filteredCommands.map((cmd, index) => (
                       <div
                         key={cmd.name}
                         className={`p-3 cursor-pointer ${
                           index === selectedIndex
-                            ? "bg-blue-100"
-                            : "hover:bg-gray-100"
+                            ? "bg-gray-700"
+                            : "hover:bg-gray-700"
                         }`}
                         onClick={() => {
                           setMessage("/" + cmd.name + " ");
@@ -190,10 +201,10 @@ function Chat() {
                           inputRef.current?.focus();
                         }}
                       >
-                        <span className="font-bold text-gray-800">
+                        <span className="font-bold text-gray-200">
                           /{cmd.name}
                         </span>
-                        <span className="ml-2 text-gray-600">
+                        <span className="ml-2 text-gray-400">
                           {cmd.description}
                         </span>
                       </div>
@@ -201,7 +212,7 @@ function Chat() {
                   </ScrollArea>
                 )}
               </div>
-              <div className="flex items-stretch">
+              <div className="flex outline-none items-stretch">
                 <Input
                   ref={inputRef}
                   type="text"
@@ -212,7 +223,7 @@ function Chat() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="flex-grow py-2 px-3 bg-white text-gray-800 border-2 !rounded-r-none !border-r-0 border-gray-300 rounded-l-lg !focus:outline-none placeholder-gray-400"
+                  className="flex-grow py-2 px-3 dark border-2 !rounded-r-none focus-visible:ring-transparent !border-r-0 rounded-l-lg placeholder-gray-400"
                 />
                 <Button
                   disabled={chat === ""}

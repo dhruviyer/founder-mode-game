@@ -35,16 +35,6 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 
-import {
-  Menubar,
-  MenubarContent,
-  MenubarItem,
-  MenubarMenu,
-  MenubarSeparator,
-  MenubarShortcut,
-  MenubarTrigger,
-} from "@/components/ui/menubar";
-
 import { ThemeProvider } from "@/components/theme-provider";
 
 function App() {
@@ -191,7 +181,7 @@ function App() {
                     </Col>
                     <Col md={4}>
                       <Tabs defaultValue="laborMarket" className="">
-                        <TabsList>
+                        <TabsList className="mb-5">
                           <TabsTrigger value="laborMarket">
                             Labor Market
                           </TabsTrigger>

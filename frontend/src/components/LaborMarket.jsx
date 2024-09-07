@@ -19,7 +19,7 @@ function LaborMarket() {
   });
 
   return (
-    <Col style={{ textAlign: "left" }}>
+    <Col className="dark text-foreground text-left">
       <h1>Labor Market</h1>
       <Table>
         <TableHeader>
