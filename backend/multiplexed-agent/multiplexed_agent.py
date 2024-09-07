@@ -131,6 +131,7 @@ channel = connection.channel()
 channel.exchange_declare(exchange="broker", exchange_type="topic")
 result = channel.queue_declare(queue='')
 channel.queue_bind(exchange="broker", queue=result.method.queue, routing_key="tick")
+channel.queue_bind(exchange="broker", queue=result.method.queue, routing_key="admin.#")
 
 def get_new_db_connection():
     return psycopg2.connect(database="company_sim",
@@ -318,12 +319,14 @@ def init():
 def handle_message(ch, method, properties, body):
     global timestamp, agents
 
+    print(method.routing_key)
     if method.routing_key == "tick":
         timestamp = body
         return
     
     if method.routing_key == "admin.reset":
         init()
+        print("Resetting...")
         return
     
     routing_key = method.routing_key.split(".", 1)

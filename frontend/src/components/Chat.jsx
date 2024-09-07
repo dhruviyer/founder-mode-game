@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 
 function Chat() {
-  const { messages, sendMessage } = useContext(AppContext);
+  const { messages, sendMessage, laborData } = useContext(AppContext);
 
   const [message, setMessage] = useState("");
 
@@ -70,22 +70,28 @@ function Chat() {
         );
       } else if (e.key === "Enter") {
         e.preventDefault();
-        setMessage("/" + filteredCommands[selectedIndex].name + " ");
-        setShowCommands(false);
-        inputRef.current?.focus();
+        if (filteredCommands[selectedIndex]) {
+          setMessage("/" + filteredCommands[selectedIndex].name + " ");
+          setShowCommands(false);
+          inputRef.current?.focus();
+        } else {
+          onClick();
+        }
       }
     } else if (e.key === "Enter") {
       onClick();
     }
   };
 
-  const commands = [
-    { name: "away", description: "Set your status as away" },
-    { name: "dnd", description: "Enable Do Not Disturb mode" },
-    { name: "invite", description: "Invite someone to the channel" },
-    { name: "remind", description: "Set a reminder" },
-    { name: "shrug", description: "Append ¯\\_(ツ)_/¯ to your message" },
-  ];
+  const commands = Object.keys(laborData).map((key) => {
+    return {
+      name: key,
+      description: `Send a message to ${key}`,
+    };
+  });
+
+  console.log(laborData);
+  console.log(commands);
 
   const [showCommands, setShowCommands] = useState(false);
   const [filteredCommands, setFilteredCommands] = useState(commands);
@@ -108,10 +114,10 @@ function Chat() {
   }, [message]);
 
   return (
-    <div className="dark text-foreground text-left">
-      <h1 className="mb-5">Chat</h1>
-      <Row>
-        <Col md={5}>
+    <div className="text-foreground text-left">
+      <Row className="border-[5px] border-solid bg-background p-3 rounded-3xl min-h-[60vh]">
+        <Col md={4}>
+          <h1 className="mb-5">Chat</h1>
           <Table>
             <TableBody>
               {chats &&
@@ -123,9 +129,7 @@ function Chat() {
                           setChat(chatName);
                           setShowCommands(false);
                         }}
-                        className={
-                          "rounded-lg " + (chatName === chat && "bg-accent")
-                        }
+                        className={`rounded border-none ${chatName === chat ? "bg-muted" : ""}`}
                       >
                         <p>{chatName}</p>
                         <i>
@@ -141,14 +145,11 @@ function Chat() {
             </TableBody>
           </Table>
         </Col>
-        <Col>
-          <div
-            style={{ minHeight: "50vh" }}
-            className="w-full p-4 flex flex-col justify-end"
-          >
+        <Col className="border-[5px] border-solid bg-background rounded-3xl min-h-[60vh]">
+          <div className="w-full pb-3 px-1 min-h-[60vh] max-h-[60vh] flex flex-col justify-end">
             <ListGroup
               className=" bg-transparent text-foreground"
-              style={{ maxHeight: "50vh", overflowY: "auto" }}
+              style={{ overflowY: "auto" }}
             >
               {chats &&
                 chats[chat] &&
@@ -161,8 +162,8 @@ function Chat() {
                       <span
                         className={
                           message.sender.startsWith("You")
-                            ? "text-primary"
-                            : "text-danger"
+                            ? "text-foreground"
+                            : " text-red-500"
                         }
                       >
                         {message.sender}:
@@ -172,21 +173,15 @@ function Chat() {
                   );
                 })}
               <ListGroup.Item
-                style={{ display: "none" }}
-                className="border-0 text-start "
-              >
-                <span
-                  className=" bg-gray-900"
-                  maxheight={"0px"}
-                  ref={scroll}
-                ></span>
-              </ListGroup.Item>
+                ref={scroll}
+                className="border-0 bg-transparent text-start "
+              ></ListGroup.Item>
             </ListGroup>
 
-            <div className="w-full relative">
+            <div className="w-full relative ">
               <div className="absolute bottom-full w-full mb-2">
                 {showCommands && (
-                  <ScrollArea className="w-full dark rounded-lg shadow-lg max-h-60">
+                  <ScrollArea className="w-full rounded-lg shadow-lg max-h-60">
                     {filteredCommands.map((cmd, index) => (
                       <div
                         key={cmd.name}
@@ -204,9 +199,6 @@ function Chat() {
                         <span className="font-bold text-gray-200">
                           /{cmd.name}
                         </span>
-                        <span className="ml-2 text-gray-400">
-                          {cmd.description}
-                        </span>
                       </div>
                     ))}
                   </ScrollArea>
@@ -223,7 +215,7 @@ function Chat() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="flex-grow py-2 px-3 dark border-2 !rounded-r-none focus-visible:ring-transparent !border-r-0 rounded-l-lg placeholder-gray-400"
+                  className="flex-grow py-2 px-3 border-2 !rounded-r-none focus-visible:ring-transparent !border-r-0 rounded-l-lg placeholder-gray-400"
                 />
                 <Button
                   disabled={chat === ""}

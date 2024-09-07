@@ -127,15 +127,18 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <div className="App min-h-screen bg-background">
-        <NavigationMenu>
-          <NavigationMenuList>
+      <div className="App min-h-screen bg-muted pt-2">
+        <NavigationMenu
+          style={{ justifyContent: "flex-start" }}
+          className="bg-background mx-auto max-w-[99%] mb-3 border-accent rounded-3xl border-solid border-[1px]"
+        >
+          <NavigationMenuList className="my-2">
             <NavigationMenuItem>
               <NavigationMenuLink
                 asChild
                 className={navigationMenuTriggerStyle()}
               >
-                <Link to="/" className="no-underline text-white">
+                <Link to="/" className="no-underline text-foreground">
                   Home
                 </Link>
               </NavigationMenuLink>
@@ -145,10 +148,13 @@ function App() {
                 asChild
                 className={navigationMenuTriggerStyle()}
               >
-                <Link to="/settings" className="!no-underline text-white">
+                <Link to="/settings" className="!no-underline text-foreground">
                   Settings
                 </Link>
               </NavigationMenuLink>
+            </NavigationMenuItem>
+            <NavigationMenuItem>
+              <ModeToggle />
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
@@ -179,9 +185,12 @@ function App() {
                     <Col>
                       <Chat />
                     </Col>
-                    <Col md={4}>
-                      <Tabs defaultValue="laborMarket" className="">
-                        <TabsList className="mb-5">
+                    <Col md={6}>
+                      <Tabs
+                        defaultValue="laborMarket"
+                        className="border-[5px] border-solid bg-background py-3 px-4 rounded-3xl min-h-[67vh] max-h-[67vh]"
+                      >
+                        <TabsList className="mb-3">
                           <TabsTrigger value="laborMarket">
                             Labor Market
                           </TabsTrigger>

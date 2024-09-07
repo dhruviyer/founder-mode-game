@@ -194,7 +194,8 @@ async def handle_user_input(websocket, path):
                     routing_key = routing_key[1:]
                 
                 message = json.dumps({"sender": sender, "message": message})
-
+                await websocket.send(json.dumps({"type": "message", "sender": f"You (to {routing_key})", "message": msg[1]}))
+                
                 connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
                 channel = connection.channel()
                 channel.exchange_declare(exchange="broker", exchange_type="topic")
@@ -203,7 +204,7 @@ async def handle_user_input(websocket, path):
 
                 connection.close()
 
-                await websocket.send(json.dumps({"type": "message", "sender": f"You (to {routing_key})", "message": msg[1]}))
+                
     finally:
         connections = {key: value for key, value in connections.items() if "socket" not in value or ("socket" in value and value["socket"] != websocket)}
 

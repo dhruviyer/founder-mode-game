@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 function LaborMarket() {
   const { laborData } = useContext(AppContext);
@@ -19,44 +20,47 @@ function LaborMarket() {
   });
 
   return (
-    <Col className="dark text-foreground text-left">
+    <Col className="text-foreground text-left max-h-[60vh]">
       <h1>Labor Market</h1>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-right">Name</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Employer</TableHead>
-            <TableHead className="text-right">Salary</TableHead>
-            <TableHead className="text-right">Skill</TableHead>
-          </TableRow>
-        </TableHeader>
 
-        <TableBody>
-          {Object.keys(laborData).length === 0 ? (
+      <Table className="overflow-scroll">
+        <ScrollArea className="h-[40vh]">
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={5}>
-                <i>No Data.</i>
-              </TableCell>
+              <TableHead className="text-right">Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Employer</TableHead>
+              <TableHead className="text-right">Salary</TableHead>
+              <TableHead className="text-right">Skill</TableHead>
             </TableRow>
-          ) : (
-            Object.keys(laborData).map((key) => {
-              return (
-                <TableRow key={key}>
-                  <TableCell className="font-medium">{key}</TableCell>
-                  <TableCell>{laborData[key]["type"]}</TableCell>
-                  <TableCell>{laborData[key]["employer"]}</TableCell>
-                  <TableCell className="text-right">
-                    {USDollar.format(laborData[key]["salary"])}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {laborData[key]["skill"]}
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
-        </TableBody>
+          </TableHeader>
+
+          <TableBody>
+            {Object.keys(laborData).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5}>
+                  <i>No Data.</i>
+                </TableCell>
+              </TableRow>
+            ) : (
+              Object.keys(laborData).map((key) => {
+                return (
+                  <TableRow key={key}>
+                    <TableCell className="font-medium">{key}</TableCell>
+                    <TableCell>{laborData[key]["type"]}</TableCell>
+                    <TableCell>{laborData[key]["employer"]}</TableCell>
+                    <TableCell className="text-right">
+                      {USDollar.format(laborData[key]["salary"])}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {laborData[key]["skill"]}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </ScrollArea>
       </Table>
     </Col>
   );

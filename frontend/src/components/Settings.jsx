@@ -47,7 +47,7 @@ function Settings() {
   };
 
   return (
-    <Card className="w-[350px]">
+    <Card className="w-[350px] text-foreground">
       <CardHeader>
         <CardTitle>Settings</CardTitle>
       </CardHeader>
