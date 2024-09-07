@@ -153,7 +153,7 @@ function Chat() {
 
   return (
     <div className="text-foreground text-left">
-      <Row className="border-[5px] border-solid bg-background p-3 min-h-[60vh]">
+      <Row className="border-[5px] border-solid bg-background rounded-3xl p-4 min-h-[60vh]">
         <Col md={4}>
           <h1 className="mb-5 text-4xl font-extrabold tracking-tight">Chat</h1>
           <Table>

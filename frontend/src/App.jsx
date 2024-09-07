@@ -198,7 +198,7 @@ function App() {
                   <Col md={5}>
                     <Tabs
                       defaultValue="laborMarket"
-                      className="border-[5px] border-solid bg-background py-3 px-4 rounded-3xl min-h-[83vh] max-h-[83vh]"
+                      className="border-[5px] border-solid bg-background py-3 px-4 rounded-3xl min-h-[86vh] max-h-[86vh]"
                     >
                       <TabsList className="mb-3">
                         <TabsTrigger value="laborMarket">
