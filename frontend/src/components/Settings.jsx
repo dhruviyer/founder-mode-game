@@ -12,13 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import {
-  Floppy,
-  PersonCircle,
-  ArrowClockwise,
-  Building,
-} from "react-bootstrap-icons";
-
 import { useState, useContext } from "react";
 import { AppContext } from "../contexts/AppContext";
 
@@ -49,7 +42,7 @@ function Settings() {
 
   return (
     <Container>
-      <Card className="w-[350px] text-foreground">
+      <Card className="w-[350px] text-foreground !border-none">
         <CardHeader>
           <CardTitle>Settings</CardTitle>
         </CardHeader>
@@ -85,12 +78,14 @@ function Settings() {
         </CardContent>
 
         <CardFooter className="flex justify-between">
-          <Button onClick={onReset} variant="outline danger">
+          <Button onClick={onReset} variant="destructive">
             Reset
           </Button>
           <div>
             <Label className="mr-2">{savedText}</Label>
-            <Button onClick={onSave}>Save</Button>
+            <Button className="bg-gray-100" onClick={onSave}>
+              Save
+            </Button>
           </div>
         </CardFooter>
       </Card>

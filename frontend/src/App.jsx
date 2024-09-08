@@ -46,6 +46,8 @@ function App() {
   const [outputData, setOutputData] = useState({});
   const [company, setCompany] = useState(localStorage.getItem("company") || "");
   const [companyData, setCompanyData] = useState({});
+  const [revenueData, setRevenueData] = useState([]);
+  const [cashData, setCashData] = useState([]);
 
   const WS_URL = "ws://localhost:8081";
 
@@ -185,6 +187,10 @@ function App() {
             companyData,
             setCompanyData,
             sendMessage,
+            revenueData,
+            setRevenueData,
+            cashData,
+            setCashData,
           }}
         >
           <Routes>

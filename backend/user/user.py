@@ -64,7 +64,7 @@ async def handle_message_inner(routing_key, body):
                 if "company" in connections[recipient] and "socket" in connections[recipient]:
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES" 
                                                         WHERE "NAME"=%s""",(connections[recipient]["company"],))
-                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3], "arr": row[4]} for row in company_data]
+                    company_data = [{"timestamp": body.decode("ascii"), "name":row[0], "cash": row[1], "features": row[2], "valuation": row[3], "arr": row[4]} for row in company_data]
                     data_packet = {
                             "type": "data",
                             "company": company_data,

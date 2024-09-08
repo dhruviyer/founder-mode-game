@@ -26,8 +26,8 @@ def handle_set_focus(body, ch):
 
     cursor.execute("""INSERT INTO "EMPLOYEE_OUTPUT" ("NAME", "SKILL", "PRIORITY")
                    VALUES (%s, %s, %s)
-                   ON CONLICT ("NAME")
-                   DO UPDATE SET "PRIORITY" = %s WHERE "NAME" = %s""", (employee, skill, focus, focus, employee)) 
+                   ON CONFLICT ("NAME")
+                   DO UPDATE SET "PRIORITY" = %s WHERE "EMPLOYEE_OUTPUT"."NAME" = %s""", (employee, skill, focus, focus, employee)) 
     conn.commit()
     conn.close()
 
