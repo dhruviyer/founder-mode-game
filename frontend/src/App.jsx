@@ -72,6 +72,9 @@ function App() {
   );
 
   const sendMessage = (message, sender = username) => {
+    console.log("MESSAGE");
+    console.log(message);
+    console.log(sender);
     sendJsonMessage({
       method: "message",
       message: message,
@@ -115,6 +118,7 @@ function App() {
             innerData["features"] = record["features"];
             innerData["valuation"] = record["valuation"];
             innerData["arr"] = record["arr"];
+            innerData["quality"] = record["quality"];
             return innerData;
           });
         }
@@ -207,9 +211,7 @@ function App() {
                       className="border-[5px] border-solid bg-background py-3 px-4 rounded-3xl min-h-[86vh] max-h-[86vh]"
                     >
                       <TabsList className="mb-3">
-                        <TabsTrigger value="laborMarket">
-                          Labor Market
-                        </TabsTrigger>
+                        <TabsTrigger value="laborMarket">Contacts</TabsTrigger>
                         <TabsTrigger value="myCompany">My Company</TabsTrigger>
                       </TabsList>
                       <TabsContent value="laborMarket">

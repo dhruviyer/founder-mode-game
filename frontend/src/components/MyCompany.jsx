@@ -70,7 +70,7 @@ function MyCompany() {
       </h1>
       <div className="">
         <ScrollArea className="h-[60vh]">
-          <Row>
+          <Row className="mb-4">
             <Col>
               <Card>
                 <CardHeader>
@@ -166,7 +166,7 @@ function MyCompany() {
               </Card>
             </Col>
           </Row>
-          <div className="border-[3px] rounded-3xl mb-2">
+          <div className="border-[3px] rounded-3xl mb-4">
             <Table className="text-foreground">
               <TableBody>
                 <TableRow className="border-none ">
@@ -192,6 +192,14 @@ function MyCompany() {
                     <b>ARR:</b>
                   </TableCell>
                   <TableCell>{USDollar.format(companyData["arr"])}</TableCell>
+                </TableRow>
+                <TableRow className="border-none">
+                  <TableCell>
+                    <b>Quality:</b>
+                  </TableCell>
+                  <TableCell>
+                    {100 - Math.round(companyData["quality"] * 100)}%
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>

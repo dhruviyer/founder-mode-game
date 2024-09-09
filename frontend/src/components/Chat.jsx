@@ -216,8 +216,8 @@ function Chat() {
                       <span
                         className={
                           message.sender.startsWith("You")
-                            ? "text-foreground"
-                            : " text-red-500"
+                            ? "text-blue-500/90"
+                            : " text-red-500/90"
                         }
                       >
                         {message.sender}:
@@ -233,30 +233,27 @@ function Chat() {
             </ListGroup>
 
             <div className="w-full relative ">
-              <div className="absolute bottom-full w-full mb-2">
-                {showCommands && (
-                  <ScrollArea className="w-full rounded-lg shadow-lg max-h-60">
-                    {filteredCommands.map((cmd, index) => (
-                      <div
-                        key={cmd.name}
-                        className={`p-3 cursor-pointer ${
-                          index === selectedIndex
-                            ? "bg-gray-700"
-                            : "hover:bg-gray-700"
-                        }`}
-                        onClick={() => {
-                          setMessage("/" + cmd.name + " ");
-                          setShowCommands(false);
-                          inputRef.current?.focus();
-                        }}
-                      >
-                        <span className="font-bold text-gray-200">
-                          /{cmd.name}
-                        </span>
-                      </div>
-                    ))}
-                  </ScrollArea>
-                )}
+              <div className="absolute bottom-full w-full mb-2 overflow-scroll max-h-[30vh]">
+                {showCommands &&
+                  filteredCommands.map((cmd, index) => (
+                    <div
+                      key={cmd.name}
+                      className={`p-3 cursor-pointer ${
+                        index === selectedIndex
+                          ? "bg-gray-700"
+                          : "hover:bg-gray-700"
+                      }`}
+                      onClick={() => {
+                        setMessage("/" + cmd.name + " ");
+                        setShowCommands(false);
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      <span className="font-bold text-gray-200">
+                        /{cmd.name}
+                      </span>
+                    </div>
+                  ))}
               </div>
               <div className="flex outline-none items-stretch">
                 <Input

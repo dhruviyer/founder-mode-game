@@ -55,7 +55,7 @@ async def handle_message_inner(routing_key, body):
         r'^admin.set_focus$',
         r'^[a-zA-Z0-9]+\.admin.confirm_employment$',
         r'admin.invest',
-        r'^[a-zA-Z0-9]+\.admin.confirm_investment$'
+        r'^[a-zA-Z0-9_]+\.admin\.confirm_investment$'
     ]
 
     try:
@@ -64,7 +64,7 @@ async def handle_message_inner(routing_key, body):
                 if "company" in connections[recipient] and "socket" in connections[recipient]:
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES" 
                                                         WHERE "NAME"=%s""",(connections[recipient]["company"],))
-                    company_data = [{"timestamp": body.decode("ascii"), "name":row[0], "cash": row[1], "features": row[2], "valuation": row[3], "arr": row[4]} for row in company_data]
+                    company_data = [{"timestamp": body.decode("ascii"), "name":row[0], "cash": row[1], "features": row[2], "valuation": row[3], "arr": row[4], "quality": row[5]} for row in company_data]
                     data_packet = {
                             "type": "data",
                             "company": company_data,
@@ -75,7 +75,7 @@ async def handle_message_inner(routing_key, body):
 
         elif routing_key == "data_broadcast":
             employee_data = db_retrieve('''SELECT "EMPLOYEES"."NAME", "EMPLOYER", "SALARY", "TYPE", "SKILL" FROM "EMPLOYEES"
-                                        INNER JOIN "EMPLOYEE_OUTPUT" ON "EMPLOYEES"."NAME" = "EMPLOYEE_OUTPUT"."NAME"''')
+                                        LEFT JOIN "EMPLOYEE_OUTPUT" ON "EMPLOYEES"."NAME" = "EMPLOYEE_OUTPUT"."NAME"''')
             employee_data = [{"name":row[0], "employer": row[1], "salary": row[2], "type": row[3], "skill": row[4]} for row in employee_data]
             
             for recipient in connections.keys():
@@ -94,7 +94,7 @@ async def handle_message_inner(routing_key, body):
 
                     company_data = db_retrieve("""SELECT * FROM "COMPANIES"
                                                   WHERE "NAME"=%s""",(connections[recipient]["company"],))
-                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3], "arr": row[4]} for row in company_data]
+                    company_data = [{"name":row[0], "cash": row[1], "features": row[2], "valuation": row[3], "arr": row[4], "quality": row[5]} for row in company_data]
                     data_packet["company"] = company_data
                 try:
                     await connections[recipient]["socket"].send(json.dumps(data_packet))
@@ -105,7 +105,9 @@ async def handle_message_inner(routing_key, body):
                     print("matched", pattern)
                     return
             
+    
             args = json.loads(body.decode("ascii"))
+            print(args)
             sender = args["sender"]
             message = args["message"]
             recipient = routing_key

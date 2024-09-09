@@ -21,9 +21,7 @@ function LaborMarket() {
 
   return (
     <Col className="text-foreground text-left max-h-[60vh]">
-      <h1 className="mb-5 text-4xl font-extrabold tracking-tight">
-        Labor Market
-      </h1>
+      <h1 className="mb-5 text-4xl font-extrabold tracking-tight">Contacts</h1>
 
       <Table className="overflow-scroll">
         <ScrollArea className="h-[40vh]">

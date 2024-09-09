@@ -93,12 +93,19 @@ def handle_investment(body, ch):
     valuation = float(args["valuation"])
     amount = float(args["amount"])
 
-    def confirm_investment(company, valuation, amount):
+    def confirm_investment(company, valuation, amount, investor):
         ch.basic_publish(
             exchange="broker",
             routing_key=f"{company}.admin.confirm_investment",
             body=body,
         )
+
+        ch.basic_publish(
+            exchange="broker",
+            routing_key=f"{investor}.admin.confirm_investment",
+            body=body,
+        )
+
         conn = get_new_db_connection()
         cursor = conn.cursor() 
 
@@ -139,7 +146,7 @@ def handle_investment(body, ch):
     )
     
     def confirm():
-        confirm_investment(company, valuation, amount)
+        confirm_investment(company, valuation, amount, investor)
         
     work_queue[confirmation_code] = confirm
     ch.basic_publish(
@@ -175,7 +182,7 @@ def handle_message(ch, method, properties, body):
             cursor = conn.cursor() 
             cursor.execute("""DELETE FROM "EMPLOYEES" * """)
             cursor.execute("""DELETE FROM "EMPLOYEE_OUTPUT" * """)
-            cursor.execute("""DELETE FROM "COMPANIES" * """)
+            cursor.execute("""UPDATE "COMPANIES" SET "CASH" = 0, "FEATURES" = 0, "VALUATION" = 0, "ARR" = 0""")
             cursor.execute("""DELETE FROM "CAP_TABLE" *""")
             conn.commit()
             conn.close()
@@ -285,7 +292,7 @@ def tick():
 
             conn = get_new_db_connection()
             cursor = conn.cursor()
-            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = %s, "CASH"="CASH"+%s, "ARR"=%s WHERE "NAME" = %s""", (features, net_cash, new_arr, company)) 
+            cursor.execute("""UPDATE "COMPANIES" SET "FEATURES" = %s, "CASH"="CASH"+%s, "ARR"=%s, "QUALITY"=%s WHERE "NAME" = %s""", (features, net_cash, new_arr, quality, company)) 
             conn.commit()
             conn.close()
 
@@ -331,7 +338,8 @@ cursor.execute("""
                "CASH" double precision,
                "FEATURES" double precision,
                "VALUATION" double precision,
-               "ARR" double precision
+               "ARR" double precision,
+               "QUALITY" double precision
                )""") 
 cursor.execute("""
                CREATE TABLE IF NOT EXISTS "EMPLOYEES" (

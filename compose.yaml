@@ -43,8 +43,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_DB: company_sim
     volumes:
-      - pgdata:/var/lib/postgresql/data 
-  
+      - pgdata:/var/lib/postgresql/data
+
   pgadmin:
     container_name: pgadmin
     image: dpage/pgadmin4
@@ -66,60 +66,20 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
+      NUM_AGENTS: 7
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+  vcs:
+    image: "agent-sim-multiplexed-vc:latest"
+    container_name: "vcs"
+    build:
+      context: ./backend/multiplexed-vc/
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
       NUM_AGENTS: 3
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-  
-  # bob:
-  #   image: "agent-sim-dev:latest"
-  #   container_name: "bob"
-  #   build:
-  #     context: ./backend/dev-agent/
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   environment:
-  #     NAME: bob
-  #     SKILL: 10
-  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
-  
-  # alice:
-  #   image: "agent-sim-dev:latest"
-  #   container_name: "alice"
-  #   build:
-  #     context: ./backend/dev-agent/
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   environment:
-  #     NAME: alice
-  #     SKILL: 10
-  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
-  
-  # tim:
-  #   image: "agent-sim-dev:latest"
-  #   container_name: "tim"
-  #   build:
-  #     context: ./backend/dev-agent/
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   environment:
-  #     NAME: tim
-  #     SKILL: 10
-  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
-
-  # jason:
-  #   image: "agent-sim-dev:latest"
-  #   container_name: "jason"
-  #   build:
-  #     context: ./backend/dev-agent/
-  #   depends_on:
-  #     rabbitmq:
-  #       condition: service_healthy
-  #   environment:
-  #     NAME: jason
-  #     SKILL: 10
-  #     OPENAI_API_KEY: ${OPENAI_API_KEY}
 
 volumes:
-  pgdata: 
+  pgdata:
