@@ -10,9 +10,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { DataTable } from "@/components/ui/datatable";
+import { columns } from "./labor_columns";
 
 function LaborMarket() {
   const { laborData } = useContext(AppContext);
+
+  const data = Object.keys(laborData).map((key) => {
+    return {
+      name: key,
+      type: laborData[key]["type"],
+      employer: laborData[key]["employer"],
+      salary: laborData[key]["salary"],
+      skill: laborData[key]["skill"],
+    };
+  });
 
   let USDollar = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -21,9 +33,10 @@ function LaborMarket() {
 
   return (
     <Col className="text-foreground text-left max-h-[60vh]">
-      <h1 className="mb-5 text-4xl font-extrabold tracking-tight">Contacts</h1>
+      <h1 className="mb-4 text-4xl font-extrabold tracking-tight">Contacts</h1>
 
-      <Table className="overflow-scroll">
+      <DataTable columns={columns} data={data} />
+      {/* <Table className="overflow-scroll">
         <ScrollArea className="h-[40vh]">
           <TableHeader>
             <TableRow>
@@ -61,7 +74,7 @@ function LaborMarket() {
             )}
           </TableBody>
         </ScrollArea>
-      </Table>
+      </Table> */}
     </Col>
   );
 }

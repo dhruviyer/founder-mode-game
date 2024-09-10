@@ -205,7 +205,7 @@ function App() {
                   <Col>
                     <Chat />
                   </Col>
-                  <Col md={5}>
+                  <Col md={6}>
                     <Tabs
                       defaultValue="laborMarket"
                       className="border-[5px] border-solid bg-background py-3 px-4 rounded-3xl min-h-[86vh] max-h-[86vh]"

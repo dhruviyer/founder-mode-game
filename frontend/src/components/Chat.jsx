@@ -5,14 +5,7 @@ import { AppContext } from "../contexts/AppContext.jsx";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 
 function Chat() {
   const { messages, sendMessage, laborData } = useContext(AppContext);
@@ -125,6 +118,7 @@ function Chat() {
     return {
       name: key,
       description: `Send a message to ${key}`,
+      type: laborData[key]["type"].toLowerCase(),
     };
   });
 
@@ -154,50 +148,51 @@ function Chat() {
   return (
     <div className="text-foreground text-left">
       <Row className="border-[5px] border-solid bg-background rounded-3xl p-4 min-h-[80vh]">
-        <Col md={4}>
+        <Col md={5}>
           <h1 className="mb-5 text-4xl font-extrabold tracking-tight">Chat</h1>
-          <Table>
-            <ScrollArea className="h-[60vh]">
-              <TableBody>
-                {chats &&
-                  Object.keys(chats).map((chatName) => {
-                    return (
-                      <TableRow className="border-none rounded-3xl">
-                        <TableCell
-                          onClick={() => {
-                            setChat(chatName);
-                            setShowCommands(false);
+          <ScrollArea className="h-[60vh]">
+            <div className="flex flex-col gap-3 pt-0">
+              {chats &&
+                Object.keys(chats).map((chatName) => {
+                  return (
+                    <button
+                      key={chatName}
+                      className={
+                        "flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent " +
+                        (chat === chatName ? "bg-muted" : "")
+                      }
+                      onClick={() => {
+                        setChat(chatName);
+                        setShowCommands(false);
 
-                            let new_chats = { ...chats };
-                            new_chats[chatName]["read"] = true;
-                            setChats(new_chats);
-                          }}
-                          className={`rounded border-none ${chatName === chat ? "bg-muted" : ""}`}
-                        >
-                          <p>{chatName}</p>
-                          <p
-                            className={
-                              chats[chatName]["read"]
-                                ? "font-thin"
-                                : "font-bold "
-                            }
-                          >
-                            {chats[chatName]["messages"].at(-1) &&
-                              (
-                                (chats[chatName]["messages"].at(-1).sender ===
-                                "You"
-                                  ? "You: "
-                                  : "") +
-                                chats[chatName]["messages"].at(-1).message
-                              ).slice(0, 30) + "..."}
-                          </p>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </ScrollArea>
-          </Table>
+                        let new_chats = { ...chats };
+                        new_chats[chatName]["read"] = true;
+                        setChats(new_chats);
+                      }}
+                    >
+                      <div className="flex w-full flex-col gap-1">
+                        <div className="flex items-center">
+                          <div className="flex items-center gap-2">
+                            <div className="font-semibold">{chatName}</div>
+                            {!chats[chatName]["read"] && (
+                              <span className="flex h-2 w-2 rounded-full bg-blue-600" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="line-clamp-2 text-xs text-muted-foreground">
+                        {chats[chatName]["messages"].at(-1) &&
+                          (
+                            (chats[chatName]["messages"].at(-1).sender === "You"
+                              ? "You: "
+                              : "") + chats[chatName]["messages"].at(-1).message
+                          ).slice(0, 60) + "..."}
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+          </ScrollArea>
         </Col>
         <Col className="border-[5px] border-solid bg-background rounded-3xl min-h-[77vh]">
           <div className="w-full pb-3 px-1 min-h-[77vh] max-h-[77vh] flex flex-col justify-end">
@@ -249,9 +244,13 @@ function Chat() {
                         inputRef.current?.focus();
                       }}
                     >
-                      <span className="font-bold text-gray-200">
-                        /{cmd.name}
-                      </span>
+                      <div className="flex">
+                        <span className="font-bold text-gray-200">
+                          /{cmd.name}
+                        </span>
+
+                        <span className="ml-5 text-gray-400">{cmd.type}</span>
+                      </div>
                     </div>
                   ))}
               </div>
