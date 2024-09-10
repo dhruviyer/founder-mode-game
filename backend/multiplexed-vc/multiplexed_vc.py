@@ -256,26 +256,21 @@ def init():
     names = [fake.unique.first_name().lower() for i in range(num_agents)]
 
     companies = [
-        "ANDREESSEN_HOROWITZ",
-        "SEQUOIA_CAPITAL",
-        "ACCEL",
-        "KLEINER_PERKINS",
-        "BENCHMARK",
-        "GREYLOCK_PARTNERS",
-        "INDEX_VENTURES",
-        "FOUNDERS_FUND",
-        "LIGHTSPEED_VENTURE_PARTNERS",
-        "NEW_ENTERPRISE_ASSOCIATES",
-        "BESSEMER_VENTURE_PARTNERS",
-        "FIRST_ROUND_CAPITAL",
-        "UNION_SQUARE_VENTURES",
-        "KHOSLA_VENTURES",
-        "GENERAL_CATALYST",
-        "GV",
-        "SV_ANGEL",
-        "INSIGHT_PARTNERS",
-        "TIGER_GLOBAL_MANAGEMENT",
-        "COATUE_MANAGEMENT",
+        "A24Z",
+        "REDWOOD_CAPITAL",
+        "EXCEL_PARTNERS",
+        "MEASUREMENT",
+        "POINTER_VENTURES",
+        "FUNDING_FOUNDERS",
+        "MACHSPEED_VENTURE_PARTNERS",
+        "NEW_BUSINESS_ASSOCIATES",
+        "EARLY_ROUND_CAPITAL",
+        "ALAMO_SQUARE_VENTURES",
+        "GENERAL_ACCELERANT",
+        "LION_GLOBAL_MANAGEMENT",
+        "COUTURE_MANAGEMENT",
+        "LAMBDA_CALCULUS",
+        "FAST_VENTURES"
     ]
 
     for name in names:
