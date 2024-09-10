@@ -5,7 +5,6 @@ import argparse
 import psycopg2
 from faker import Faker
 import random
-import re
 
 client = OpenAI()
 MODEL = "gpt-4o-mini"

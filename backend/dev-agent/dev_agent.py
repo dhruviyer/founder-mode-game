@@ -2,7 +2,6 @@ import pika
 import json
 from openai import OpenAI, BadRequestError
 import argparse
-import sys
 import psycopg2
 
 client = OpenAI()

@@ -4,7 +4,6 @@ import random
 import string
 import psycopg2
 import threading
-from asyncio import sleep
 import datetime
 import time
 import numpy as np
@@ -37,7 +36,7 @@ def handle_set_focus(body, ch):
 
     ch.basic_publish(
         exchange="broker",
-        routing_key=f"data_broadcast",
+        routing_key="data_broadcast",
         body="",
     )
 
@@ -67,7 +66,7 @@ def handle_change_employment(body, ch):
 
         ch.basic_publish(
             exchange="broker",
-            routing_key=f"data_broadcast",
+            routing_key="data_broadcast",
             body="",
         )
 
@@ -152,7 +151,7 @@ def handle_investment(body, ch):
 
         ch.basic_publish(
             exchange="broker",
-            routing_key=f"data_broadcast",
+            routing_key="data_broadcast",
             body="",
         )
 
@@ -203,7 +202,7 @@ def handle_message(ch, method, properties, body):
             cursor.execute("""DELETE FROM "CAP_TABLE" *""")
             conn.commit()
             conn.close()
-            ch.basic_publish(exchange="broker", routing_key=f"admin.reset", body="")
+            ch.basic_publish(exchange="broker", routing_key="admin.reset", body="")
         elif message[0] == "invest":
             args = message[1].split(" ")
             data = {
@@ -214,7 +213,7 @@ def handle_message(ch, method, properties, body):
             }
             ch.basic_publish(
                 exchange="broker",
-                routing_key=f"admin.invest",
+                routing_key="admin.invest",
                 body=json.dumps(data),
             )
 

@@ -1,11 +1,10 @@
 import pika
 import json
-from openai import OpenAI, BadRequestError
+from openai import OpenAI
 import argparse
 import psycopg2
 from faker import Faker
 import random
-import re
 
 client = OpenAI()
 MODEL = "gpt-4o-mini"
