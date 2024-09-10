@@ -11,7 +11,9 @@ import sys
 agents = [("bob", 10), ("alice", 5)]
 
 # Pika connection for game clock
-connection = pika.BlockingConnection(pika.ConnectionParameters(host="localhost", port=5672))
+connection = pika.BlockingConnection(
+    pika.ConnectionParameters(host="localhost", port=5672)
+)
 channel = connection.channel()
 channel.exchange_declare(exchange="broker", exchange_type="topic")
 
@@ -19,8 +21,8 @@ channel.exchange_declare(exchange="broker", exchange_type="topic")
 agents = [DevAgent(agent[0], agent[1]) for agent in agents]
 
 # Create employees table and add agents
-conn = sqlite3.connect('company_sim.db') 
-cursor = conn.cursor() 
+conn = sqlite3.connect("company_sim.db")
+cursor = conn.cursor()
 cursor.execute("DROP TABLE IF EXISTS EMPLOYEES")
 cursor.execute("DROP TABLE IF EXISTS EMPLOYEE_OUTPUT")
 cursor.execute("DROP TABLE IF EXISTS COMPANIES")
@@ -33,24 +35,28 @@ cursor.execute(output_records)
 cursor.execute(company_records)
 
 for agent in agents:
-    cursor.execute( 
+    cursor.execute(
         """INSERT INTO EMPLOYEES(NAME, EMPLOYER, MANAGER, SALARY, TYPE) 
-        VALUES (?, 'UNEMPLOYED', NULL, 0, 'ENGINEER')""", (agent.name,)) 
-    cursor.execute( 
+        VALUES (?, 'UNEMPLOYED', NULL, 0, 'ENGINEER')""",
+        (agent.name,),
+    )
+    cursor.execute(
         """INSERT INTO EMPLOYEE_OUTPUT(NAME, SKILL, PRIORITY) 
-        VALUES (?, ?, 'FEATURES')""", (agent.name, agent.skill_level))
+        VALUES (?, ?, 'FEATURES')""",
+        (agent.name, agent.skill_level),
+    )
 
 conn.commit()
 
-print("OUTPUTS Table: ") 
-data = cursor.execute('''SELECT * FROM EMPLOYEE_OUTPUT''') 
-for row in data: 
-    print(row) 
+print("OUTPUTS Table: ")
+data = cursor.execute("""SELECT * FROM EMPLOYEE_OUTPUT""")
+for row in data:
+    print(row)
 
-print("EMPLOYEES Table: ") 
-data = cursor.execute('''SELECT * FROM EMPLOYEES''') 
-for row in data: 
-    print(row) 
+print("EMPLOYEES Table: ")
+data = cursor.execute("""SELECT * FROM EMPLOYEES""")
+for row in data:
+    print(row)
 
 conn.close()
 
@@ -60,13 +66,14 @@ for agent in agents:
 
 admin.thread.start()
 
+
 # main game loop function
 def tick():
     tick_counter = 0
     while True:
         sleep(3)
-        conn = sqlite3.connect('company_sim.db') 
-        cursor = conn.cursor() 
+        conn = sqlite3.connect("company_sim.db")
+        cursor = conn.cursor()
         data = cursor.execute("""
                             SELECT COMPANIES.NAME AS NAME, PRIORITY, VALUE, FEATURES FROM (SELECT EMPLOYER, PRIORITY, SUM(SKILL) AS VALUE
                             FROM EMPLOYEE_OUTPUT
@@ -76,11 +83,11 @@ def tick():
         companies = {}
         for row in data:
             if row[0] not in companies.keys():
-               companies[row[0]] = {}
+                companies[row[0]] = {}
 
             companies[row[0]][row[1]] = row[2]
             companies[row[0]]["FEATURES_TODAY"] = 0.0 if row[3] is None else row[3]
-        
+
         for company in companies.keys():
             if company == "unemployed":
                 continue
@@ -91,11 +98,14 @@ def tick():
             if "FEATURES" in companies[company]:
                 features = companies[company]["FEATURES"]
 
-            quality = 1/(1+pow(1.5,quality))
+            quality = 1 / (1 + pow(1.5, quality))
             temp = features
-            features = features + (1-quality)*companies[company]["FEATURES_TODAY"]
-            cursor.execute("""UPDATE COMPANIES set FEATURES=? where NAME = ?""", (features, company)) 
-        
+            features = features + (1 - quality) * companies[company]["FEATURES_TODAY"]
+            cursor.execute(
+                """UPDATE COMPANIES set FEATURES=? where NAME = ?""",
+                (features, company),
+            )
+
         conn.commit()
         conn.close()
         channel.basic_publish(

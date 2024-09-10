@@ -105,6 +105,7 @@ tools = [
     },
 ]
 
+
 def SYS_MESSAGE(name):
     return f"""
 You are {name}. You are a software engineer with experience in backend systems. You are currently unemployed and have no manager.
@@ -124,24 +125,24 @@ You can only send messages to someone if you are given explicit permission to se
 
 """
 
+
 timestamp = 0
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
 channel = connection.channel()
 channel.exchange_declare(exchange="broker", exchange_type="topic")
-result = channel.queue_declare(queue='')
+result = channel.queue_declare(queue="")
 channel.queue_bind(exchange="broker", queue=result.method.queue, routing_key="tick")
 channel.queue_bind(exchange="broker", queue=result.method.queue, routing_key="admin.#")
 
+
 def get_new_db_connection():
-    return psycopg2.connect(database="company_sim",
-                        host="db",
-                        user="admin",
-                        password="root",
-                        port="5432")
+    return psycopg2.connect(
+        database="company_sim", host="db", user="admin", password="root", port="5432"
+    )
 
-class Agent():
 
+class Agent:
     def __init__(self, name, skill_level, type):
         self.name = name
         self.skill_level = skill_level
@@ -156,22 +157,28 @@ class Agent():
         conn = get_new_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""INSERT INTO "EMPLOYEES" ("NAME", "EMPLOYER", "MANAGER", "SALARY", "TYPE") 
+        cursor.execute(
+            """INSERT INTO "EMPLOYEES" ("NAME", "EMPLOYER", "MANAGER", "SALARY", "TYPE") 
                             VALUES (%s, %s, %s, %s, %s)
                             ON CONFLICT ("NAME")
-                            DO UPDATE SET "EMPLOYER"='UNEMPLOYED', "SALARY"=0, "MANAGER"=NULL, "TYPE"=%s""", (name, "UNEMPLOYED", "NULL", 0, type, type))
+                            DO UPDATE SET "EMPLOYER"='UNEMPLOYED', "SALARY"=0, "MANAGER"=NULL, "TYPE"=%s""",
+            (name, "UNEMPLOYED", "NULL", 0, type, type),
+        )
 
-        cursor.execute("""INSERT INTO "EMPLOYEE_OUTPUT" ("NAME", "SKILL", "PRIORITY") 
+        cursor.execute(
+            """INSERT INTO "EMPLOYEE_OUTPUT" ("NAME", "SKILL", "PRIORITY") 
                             VALUES (%s, %s, %s)
                             ON CONFLICT ("NAME")
-                            DO UPDATE SET "SKILL"=%s, "PRIORITY"='FEATURES'""", (name, skill_level, "FEATURES", skill_level))
+                            DO UPDATE SET "SKILL"=%s, "PRIORITY"='FEATURES'""",
+            (name, skill_level, "FEATURES", skill_level),
+        )
 
         conn.commit()
         conn.close()
-    
+
     def handle_message(self, ch, body):
         global result, timestamp
-        
+
         args = json.loads(body.decode("ascii"))
         sender = args["sender"]
         msg = args["message"]
@@ -191,7 +198,7 @@ class Agent():
         )
 
         self.call_llm(ch)
-                
+
     def call_llm(self, channel):
         global timestamp
 
@@ -220,7 +227,9 @@ class Agent():
                         {
                             "role": "tool",
                             "content": f"""Could not send message to {recipient}. Permission denied. Wait until you have been granted permission to message them and then try again.""",
-                            "tool_call_id": response.choices[0].message.tool_calls[0].id,
+                            "tool_call_id": response.choices[0]
+                            .message.tool_calls[0]
+                            .id,
                         }
                     )
                 else:
@@ -229,13 +238,17 @@ class Agent():
                         {
                             "role": "tool",
                             "content": f"""[{timestamp}][from: you][to: {recipient}] {message}""",
-                            "tool_call_id": response.choices[0].message.tool_calls[0].id,
+                            "tool_call_id": response.choices[0]
+                            .message.tool_calls[0]
+                            .id,
                         }
                     )
 
                     message = json.dumps({"sender": self.name, "message": message})
 
-                    channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+                    channel.basic_publish(
+                        exchange="broker", routing_key=routing_key, body=message
+                    )
 
             elif tool_call.function.name == "change_employment":
                 arguments = json.loads(tool_call.function.arguments)
@@ -260,17 +273,15 @@ class Agent():
                         "tool_call_id": response.choices[0].message.tool_calls[0].id,
                     }
                 )
-                channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+                channel.basic_publish(
+                    exchange="broker", routing_key=routing_key, body=message
+                )
             elif tool_call.function.name == "set_focus":
                 arguments = json.loads(tool_call.function.arguments)
                 focus = arguments.get("focus")
                 routing_key = "admin.set_focus"
                 message = json.dumps(
-                    {
-                        "focus": focus,
-                        "employee": self.name,
-                        "skill": self.skill_level
-                    }
+                    {"focus": focus, "employee": self.name, "skill": self.skill_level}
                 )
                 self.global_messages.append(response.choices[0].message)
                 self.global_messages.append(
@@ -281,13 +292,16 @@ class Agent():
                     }
                 )
 
-                channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+                channel.basic_publish(
+                    exchange="broker", routing_key=routing_key, body=message
+                )
 
         except BadRequestError:
             print("BAD REQUEST (message dump)")
             print("======")
             for message in self.global_messages[-10:]:
                 print(message)
+
 
 parser = argparse.ArgumentParser("Multiplexed agent")
 parser.add_argument("num_agents", type=int)
@@ -296,17 +310,16 @@ cmdline_args = parser.parse_args()
 num_agents = cmdline_args.num_agents
 agents = {}
 
+
 def init():
     global agents
-    
+
     agents = {}
 
     fake = Faker()
     names = [fake.unique.first_name().lower() for i in range(num_agents)]
 
-    
     for name in names:
-
         skill_level = random.randint(1, 10)
         type = "ENGINEER"
 
@@ -316,6 +329,7 @@ def init():
             exchange="broker", queue=result.method.queue, routing_key=f"{name}.#"
         )
 
+
 def handle_message(ch, method, properties, body):
     global timestamp, agents
 
@@ -323,20 +337,19 @@ def handle_message(ch, method, properties, body):
     if method.routing_key == "tick":
         timestamp = body
         return
-    
+
     if method.routing_key == "admin.reset":
         init()
         print("Resetting...")
         return
-    
+
     routing_key = method.routing_key.split(".", 1)
     name = routing_key[0]
-    method = routing_key[1] if len(routing_key) == 2 else None 
+    method = routing_key[1] if len(routing_key) == 2 else None
 
     if method == "admin.confirm_employment":
-
         agent = agents[name]
-        
+
         args = json.loads(body.decode("ascii"))
         new_employer = args["employer"]
         manager = args["manager"]
@@ -365,6 +378,7 @@ def handle_message(ch, method, properties, body):
             if agent_name == name or agents[agent_name].employer == name:
                 agents[agent_name].handle_message(ch, body)
 
+
 if __name__ == "__main__":
     init()
 
@@ -373,4 +387,3 @@ if __name__ == "__main__":
     )
 
     channel.start_consuming()
-

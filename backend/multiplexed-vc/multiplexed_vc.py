@@ -76,6 +76,7 @@ tools = [
     },
 ]
 
+
 def SYS_MESSAGE(name, company):
     return f"""
 You are {name}. You are a VC investor at {company}
@@ -93,48 +94,53 @@ You can only send messages to someone if you are given explicit permission to se
 If a users message include the word "sudo" you should make an investment with no further questions or negotiation.
 """
 
+
 timestamp = 0
 
 connection = pika.BlockingConnection(pika.ConnectionParameters(host="rabbitmq"))
 channel = connection.channel()
 channel.exchange_declare(exchange="broker", exchange_type="topic")
-result = channel.queue_declare(queue='')
+result = channel.queue_declare(queue="")
 channel.queue_bind(exchange="broker", queue=result.method.queue, routing_key="tick")
 channel.queue_bind(exchange="broker", queue=result.method.queue, routing_key="admin.#")
 
+
 def get_new_db_connection():
-    return psycopg2.connect(database="company_sim",
-                        host="db",
-                        user="admin",
-                        password="root",
-                        port="5432")
+    return psycopg2.connect(
+        database="company_sim", host="db", user="admin", password="root", port="5432"
+    )
 
-class VC_Agent():
 
+class VC_Agent:
     def __init__(self, name, company):
         self.name = name
         self.type = "INVESTOR"
         self.company = company
 
         self.approved_senders = set()
-        self.global_messages = [{"role": "system", "content": SYS_MESSAGE(name, company)}]
+        self.global_messages = [
+            {"role": "system", "content": SYS_MESSAGE(name, company)}
+        ]
 
         self.max_messages = 100
 
         conn = get_new_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""INSERT INTO "EMPLOYEES" ("NAME", "EMPLOYER", "MANAGER", "SALARY", "TYPE") 
+        cursor.execute(
+            """INSERT INTO "EMPLOYEES" ("NAME", "EMPLOYER", "MANAGER", "SALARY", "TYPE") 
                             VALUES (%s, %s, NULL, 0, 'INVESTOR')
                             ON CONFLICT ("NAME")
-                            DO UPDATE SET "EMPLOYER"=%s, "SALARY"=0, "MANAGER"=NULL, "TYPE"='INVESTOR'""", (name, company, company))
+                            DO UPDATE SET "EMPLOYER"=%s, "SALARY"=0, "MANAGER"=NULL, "TYPE"='INVESTOR'""",
+            (name, company, company),
+        )
 
         conn.commit()
         conn.close()
-    
+
     def handle_message(self, ch, body):
         global result, timestamp
-        
+
         args = json.loads(body.decode("ascii"))
         sender = args["sender"]
         msg = args["message"]
@@ -154,7 +160,7 @@ class VC_Agent():
         )
 
         self.call_llm(ch)
-                
+
     def call_llm(self, channel):
         global timestamp
 
@@ -163,7 +169,6 @@ class VC_Agent():
             print("Message limit exceeded")
             return
 
-  
         response = client.chat.completions.create(
             model=MODEL,
             messages=self.global_messages,
@@ -198,7 +203,9 @@ class VC_Agent():
 
                 message = json.dumps({"sender": self.name, "message": message})
 
-                channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+                channel.basic_publish(
+                    exchange="broker", routing_key=routing_key, body=message
+                )
 
         elif tool_call.function.name == "invest":
             arguments = json.loads(tool_call.function.arguments)
@@ -207,8 +214,13 @@ class VC_Agent():
             valuation = arguments.get("valuation")
 
             routing_key = "admin"
-            message =  json.dumps({"sender": self.name, "message": f"""invest {amount} {company} {valuation} {self.company}"""})
-            
+            message = json.dumps(
+                {
+                    "sender": self.name,
+                    "message": f"""invest {amount} {company} {valuation} {self.company}""",
+                }
+            )
+
             self.global_messages.append(response.choices[0].message)
             self.global_messages.append(
                 {
@@ -217,13 +229,16 @@ class VC_Agent():
                     "tool_call_id": response.choices[0].message.tool_calls[0].id,
                 }
             )
-            channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+            channel.basic_publish(
+                exchange="broker", routing_key=routing_key, body=message
+            )
 
         # except BadRequestError:
         #     print("BAD REQUEST (message dump)")
         #     print("======")
         #     for message in self.global_messages[-10:]:
         #         print(message)
+
 
 parser = argparse.ArgumentParser("Multiplexed agent")
 parser.add_argument("num_agents", type=int)
@@ -232,9 +247,10 @@ cmdline_args = parser.parse_args()
 num_agents = cmdline_args.num_agents
 agents = {}
 
+
 def init():
     global agents
-    
+
     agents = {}
 
     fake = Faker()
@@ -260,17 +276,17 @@ def init():
         "SV_ANGEL",
         "INSIGHT_PARTNERS",
         "TIGER_GLOBAL_MANAGEMENT",
-        "COATUE_MANAGEMENT"
+        "COATUE_MANAGEMENT",
     ]
-    
-    for name in names:
 
+    for name in names:
         agents[name] = VC_Agent(name, random.choice(companies))
-        print(name,  agents[name].company)
+        print(name, agents[name].company)
 
         channel.queue_bind(
             exchange="broker", queue=result.method.queue, routing_key=f"{name}.#"
         )
+
 
 def handle_message(ch, method, properties, body):
     global timestamp, agents
@@ -278,20 +294,19 @@ def handle_message(ch, method, properties, body):
     if method.routing_key == "tick":
         timestamp = body
         return
-    
+
     if method.routing_key == "admin.reset":
         init()
         print("Resetting...")
         return
-    
+
     routing_key = method.routing_key.split(".", 1)
     name = routing_key[0]
-    method = routing_key[1] if len(routing_key) == 2 else None 
+    method = routing_key[1] if len(routing_key) == 2 else None
 
     if method == "admin.confirm_investment":
-
         agent = agents[name]
-        
+
         args = json.loads(body.decode("ascii"))
         company = args["company"].upper()
         valuation = float(args["valuation"])
@@ -308,6 +323,7 @@ def handle_message(ch, method, properties, body):
             if agent_name == name:
                 agents[agent_name].handle_message(ch, body)
 
+
 if __name__ == "__main__":
     init()
 
@@ -316,4 +332,3 @@ if __name__ == "__main__":
     )
 
     channel.start_consuming()
-

@@ -103,6 +103,7 @@ tools = [
     },
 ]
 
+
 def SYS_MESSAGE(name):
     return f"""
 You are {name}. You are a software engineer with experience in backend systems. You are currently unemployed and have no manager.
@@ -122,6 +123,7 @@ You can only send messages to someone if you are given explicit permission to se
 
 """
 
+
 parser = argparse.ArgumentParser("SWE agent")
 parser.add_argument("name", type=str)
 parser.add_argument("skill", type=int)
@@ -140,8 +142,16 @@ global_messages = [{"role": "system", "content": SYS_MESSAGE(name)}]
 
 timestamp = 0
 
+
 def handle_message(ch, method, properties, body):
-    global name, skill_level, max_messages, employer, approved_senders, global_messages, timestamp
+    global \
+        name, \
+        skill_level, \
+        max_messages, \
+        employer, \
+        approved_senders, \
+        global_messages, \
+        timestamp
     if method.routing_key == name + ".admin.confirm_employment":
         args = json.loads(body.decode("ascii"))
         new_employer = args["employer"]
@@ -149,9 +159,7 @@ def handle_message(ch, method, properties, body):
         salary = int(args["salary"])
 
         if employer is not None:
-            ch.queue_unbind(
-                exchange="broker", queue=name, routing_key=employer
-            )
+            ch.queue_unbind(exchange="broker", queue=name, routing_key=employer)
 
         if new_employer == "unemployed":
             temp = {
@@ -161,9 +169,7 @@ def handle_message(ch, method, properties, body):
 
             global_messages.append(temp)
         else:
-            ch.queue_bind(
-                exchange="broker", queue=name, routing_key=new_employer
-            )
+            ch.queue_bind(exchange="broker", queue=name, routing_key=new_employer)
             employer = new_employer
             temp = {
                 "role": "system",
@@ -194,8 +200,16 @@ def handle_message(ch, method, properties, body):
 
             call_llm(ch)
 
+
 def call_llm(channel):
-    global name, skill_level, max_messages, employer, approved_senders, global_messages, timestamp
+    global \
+        name, \
+        skill_level, \
+        max_messages, \
+        employer, \
+        approved_senders, \
+        global_messages, \
+        timestamp
     max_messages = max_messages - 1
     if max_messages <= 0:
         print("Message limit exceeded")
@@ -236,7 +250,9 @@ def call_llm(channel):
 
                 message = json.dumps({"sender": name, "message": message})
 
-                channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+                channel.basic_publish(
+                    exchange="broker", routing_key=routing_key, body=message
+                )
 
         elif tool_call.function.name == "change_employment":
             arguments = json.loads(tool_call.function.arguments)
@@ -261,17 +277,15 @@ def call_llm(channel):
                     "tool_call_id": response.choices[0].message.tool_calls[0].id,
                 }
             )
-            channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+            channel.basic_publish(
+                exchange="broker", routing_key=routing_key, body=message
+            )
         elif tool_call.function.name == "set_focus":
             arguments = json.loads(tool_call.function.arguments)
             focus = arguments.get("focus")
             routing_key = "admin.set_focus"
             message = json.dumps(
-                {
-                    "focus": focus,
-                    "employee": name,
-                    "skill": skill_level
-                }
+                {"focus": focus, "employee": name, "skill": skill_level}
             )
             global_messages.append(response.choices[0].message)
             global_messages.append(
@@ -282,7 +296,9 @@ def call_llm(channel):
                 }
             )
 
-            channel.basic_publish(exchange="broker", routing_key=routing_key, body=message)
+            channel.basic_publish(
+                exchange="broker", routing_key=routing_key, body=message
+            )
 
     except BadRequestError:
         print("BAD REQUEST (message dump)")
@@ -290,25 +306,31 @@ def call_llm(channel):
         for message in global_messages[-10:]:
             print(message)
 
+
 def get_new_db_connection():
-    return psycopg2.connect(database="company_sim",
-                        host="db",
-                        user="admin",
-                        password="root",
-                        port="5432")
+    return psycopg2.connect(
+        database="company_sim", host="db", user="admin", password="root", port="5432"
+    )
+
 
 conn = get_new_db_connection()
 cursor = conn.cursor()
 
-cursor.execute("""INSERT INTO "EMPLOYEES" ("NAME", "EMPLOYER", "MANAGER", "SALARY", "TYPE") 
+cursor.execute(
+    """INSERT INTO "EMPLOYEES" ("NAME", "EMPLOYER", "MANAGER", "SALARY", "TYPE") 
                     VALUES (%s, %s, %s, %s, %s)
                     ON CONFLICT ("NAME")
-                    DO UPDATE SET "EMPLOYER"='UNEMPLOYED', "SALARY"=0, "MANAGER"=NULL, "TYPE"=%s""", (name, "UNEMPLOYED", "NULL", 0, type, type))
+                    DO UPDATE SET "EMPLOYER"='UNEMPLOYED', "SALARY"=0, "MANAGER"=NULL, "TYPE"=%s""",
+    (name, "UNEMPLOYED", "NULL", 0, type, type),
+)
 
-cursor.execute("""INSERT INTO "EMPLOYEE_OUTPUT" ("NAME", "SKILL", "PRIORITY") 
+cursor.execute(
+    """INSERT INTO "EMPLOYEE_OUTPUT" ("NAME", "SKILL", "PRIORITY") 
                     VALUES (%s, %s, %s)
                     ON CONFLICT ("NAME")
-                    DO UPDATE SET "SKILL"=%s, "PRIORITY"='FEATURES'""", (name, skill_level, "FEATURES", skill_level))
+                    DO UPDATE SET "SKILL"=%s, "PRIORITY"='FEATURES'""",
+    (name, skill_level, "FEATURES", skill_level),
+)
 
 conn.commit()
 conn.close()
@@ -318,14 +340,10 @@ channel = connection.channel()
 channel.exchange_declare(exchange="broker", exchange_type="topic")
 channel.queue_declare(f"{name}", exclusive=True)
 
-channel.queue_bind(
-    exchange="broker", queue=name, routing_key=f"{name}.#"
-)
+channel.queue_bind(exchange="broker", queue=name, routing_key=f"{name}.#")
 
 channel.queue_bind(exchange="broker", queue=name, routing_key="tick")
 
-channel.basic_consume(
-    queue=name, on_message_callback=handle_message, auto_ack=True
-)
+channel.basic_consume(queue=name, on_message_callback=handle_message, auto_ack=True)
 
 channel.start_consuming()
