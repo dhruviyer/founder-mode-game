@@ -201,14 +201,14 @@ function App() {
             <Route
               path="/"
               element={
-                <Row className="px-4">
+                <Row className="px-4 gap-3">
                   <Col>
                     <Chat />
                   </Col>
                   <Col md={6}>
                     <Tabs
                       defaultValue="laborMarket"
-                      className="border-[5px] border-solid bg-background py-3 px-4 rounded-3xl min-h-[86vh] max-h-[86vh]"
+                      className="border-[1px] border-gray-400 border-solid bg-background py-3 px-4 rounded-3xl min-h-[86vh] max-h-[86vh]"
                     >
                       <TabsList className="mb-3">
                         <TabsTrigger value="laborMarket">Contacts</TabsTrigger>

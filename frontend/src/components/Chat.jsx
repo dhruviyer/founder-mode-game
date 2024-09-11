@@ -147,9 +147,9 @@ function Chat() {
 
   return (
     <div className="text-foreground text-left">
-      <Row className="border-[5px] border-solid bg-background rounded-3xl p-4 min-h-[80vh]">
+      <Row className="border-[1px] border-gray-400 border-solid bg-background rounded-3xl p-4 min-h-[80vh]">
         <Col md={5}>
-          <h1 className="mb-5 text-4xl font-extrabold tracking-tight">Chat</h1>
+          <h1 className="mb-5 text-4xl font-semibold tracking-tight">Chat</h1>
           <ScrollArea className="h-[60vh]">
             <div className="flex flex-col gap-3 pt-0">
               {chats &&

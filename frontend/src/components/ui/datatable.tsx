@@ -37,6 +37,7 @@ export function DataTable<TData, TValue>({
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
+    autoResetPageIndex: false,
     initialState: {
       pagination: {
         pageSize: 5, //custom default page size
