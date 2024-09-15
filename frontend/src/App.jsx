@@ -144,10 +144,10 @@ function App() {
 
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <div className="App min-h-screen bg-muted pt-2">
+      <div className="App min-h-screen bg-background pt-2">
         <NavigationMenu
           style={{ justifyContent: "flex-start" }}
-          className="bg-background mx-auto max-w-[99%] mb-3 border-accent rounded-3xl border-solid border-[1px]"
+          className="bg-background mx-auto max-w-[99%] mb-3"
         >
           <NavigationMenuList className="my-2">
             <NavigationMenuItem>
@@ -208,7 +208,7 @@ function App() {
                   <Col md={6}>
                     <Tabs
                       defaultValue="laborMarket"
-                      className="border-[1px] border-gray-400 border-solid bg-background py-3 px-4 rounded-3xl min-h-[86vh] max-h-[86vh]"
+                      className=" bg-background py-3 px-4 rounded-3xl min-h-[86vh] max-h-[86vh]"
                     >
                       <TabsList className="mb-3">
                         <TabsTrigger value="laborMarket">Contacts</TabsTrigger>

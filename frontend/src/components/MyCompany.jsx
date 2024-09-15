@@ -72,7 +72,7 @@ function MyCompany() {
         <ScrollArea className="h-[60vh]">
           <Row className="mb-4">
             <Col>
-              <Card>
+              <Card className="border-[1px] border-neutral-600">
                 <CardHeader>
                   <CardTitle>Revenue</CardTitle>
                 </CardHeader>
@@ -118,7 +118,7 @@ function MyCompany() {
               </Card>
             </Col>
             <Col>
-              <Card>
+              <Card className="border-[1px] border-neutral-600">
                 <CardHeader>
                   <CardTitle>Cash</CardTitle>
                 </CardHeader>
@@ -166,7 +166,7 @@ function MyCompany() {
               </Card>
             </Col>
           </Row>
-          <div className="border-[3px] rounded-3xl mb-4">
+          <div className="border-[1px] border-neutral-600 rounded-3xl mb-4">
             <Table className="text-foreground">
               <TableBody>
                 <TableRow className="border-none ">

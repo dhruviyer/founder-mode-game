@@ -147,7 +147,7 @@ function Chat() {
 
   return (
     <div className="text-foreground text-left">
-      <Row className="border-[1px] border-gray-400 border-solid bg-background rounded-3xl p-4 min-h-[80vh]">
+      <Row className="border-solid bg-background p-4 min-h-[80vh]">
         <Col md={5}>
           <h1 className="mb-5 text-4xl font-semibold tracking-tight">Chat</h1>
           <ScrollArea className="h-[60vh]">
@@ -158,7 +158,7 @@ function Chat() {
                     <button
                       key={chatName}
                       className={
-                        "flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent " +
+                        "flex flex-col items-start gap-2 rounded-sm border-[1px] border-neutral-500 p-3 text-left text-sm transition-all hover:bg-accent " +
                         (chat === chatName ? "bg-muted" : "")
                       }
                       onClick={() => {
@@ -194,7 +194,7 @@ function Chat() {
             </div>
           </ScrollArea>
         </Col>
-        <Col className="border-[5px] border-solid bg-background rounded-3xl min-h-[77vh]">
+        <Col className="border-[1px] border-neutral-600 bg-background rounded-lg min-h-[77vh]">
           <div className="w-full pb-3 px-1 min-h-[77vh] max-h-[77vh] flex flex-col justify-end">
             <ListGroup
               className=" bg-transparent text-foreground"
