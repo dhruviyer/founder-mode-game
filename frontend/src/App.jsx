@@ -41,6 +41,7 @@ function App() {
   const [username, setUsername] = useState(
     localStorage.getItem("username") || ""
   );
+  
   const [messages, setMessages] = useState([]);
   const [laborData, setLaborData] = useState({});
   const [outputData, setOutputData] = useState({});

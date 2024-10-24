@@ -57,16 +57,16 @@ services:
       PGADMIN_DEFAULT_PASSWORD: root
     restart: unless-stopped
 
-  agents:
+  devs:
     image: "agent-sim-multiplexed-dev:latest"
-    container_name: "agents"
+    container_name: "devs"
     build:
-      context: ./backend/multiplexed-agent/
+      context: ./backend/multiplexed-dev/
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
-      NUM_AGENTS: 7
+      NUM_AGENTS: 20
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
   vcs:

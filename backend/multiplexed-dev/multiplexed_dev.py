@@ -282,7 +282,7 @@ class Agent:
                 message = json.dumps(
                     {"focus": focus, "employee": self.name, "skill": self.skill_level}
                 )
-                self.global_messages.append(response.choices[0].message)
+                self.global_messages.append(response.choices[0].message) 
                 self.global_messages.append(
                     {
                         "role": "tool",
@@ -319,7 +319,7 @@ def init():
     names = [fake.unique.first_name().lower() for i in range(num_agents)]
 
     for name in names:
-        skill_level = random.randint(1, 10)
+        skill_level = random.randint(5, 25)
         type = "ENGINEER"
 
         agents[name] = Agent(name, skill_level, type)

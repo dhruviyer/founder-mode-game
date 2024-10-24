@@ -228,15 +228,12 @@ class VC_Agent:
                     "tool_call_id": response.choices[0].message.tool_calls[0].id,
                 }
             )
+
+            print(self.global_messages)
+
             channel.basic_publish(
                 exchange="broker", routing_key=routing_key, body=message
             )
-
-        # except BadRequestError:
-        #     print("BAD REQUEST (message dump)")
-        #     print("======")
-        #     for message in self.global_messages[-10:]:
-        #         print(message)
 
 
 parser = argparse.ArgumentParser("Multiplexed agent")

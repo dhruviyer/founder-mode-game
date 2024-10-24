@@ -8,12 +8,17 @@ import datetime
 import time
 import numpy as np
 
+# maps confirmation messages to commitment actions
 work_queue = {}
-BETA = 20
-CHAOS = 0.25
-ACV = 2500
-SALES_PER_TICK = 1
 
+# critical game parameters!
+ALPHA = 1
+BETA = 3
+CHAOS = 0.25
+VALUE_PER_FEATURE = 500
+SALES_PER_TICK = 1
+RANGE = 500
+PERTURB = 0.5
 
 def handle_set_focus(body, ch):
     args = json.loads(body.decode("ascii"))
@@ -34,12 +39,12 @@ def handle_set_focus(body, ch):
     conn.commit()
     conn.close()
 
+    # tell the clients to push an update to the frontend
     ch.basic_publish(
         exchange="broker",
         routing_key="data_broadcast",
         body="",
     )
-
 
 def handle_change_employment(body, ch):
     args = json.loads(body.decode("ascii"))
@@ -48,6 +53,7 @@ def handle_change_employment(body, ch):
     manager = args["manager"]
     salary = int(args["salary"])
 
+    # gets called once the confirmation message comes through to commit the change
     def commit_new_employement(employee, new_employer, salary, manager):
         ch.basic_publish(
             exchange="broker",
@@ -64,6 +70,7 @@ def handle_change_employment(body, ch):
         conn.commit()
         conn.close()
 
+        # tell the clients to push an update to the frontend
         ch.basic_publish(
             exchange="broker",
             routing_key="data_broadcast",
@@ -93,7 +100,6 @@ def handle_change_employment(body, ch):
             ),
         )
 
-
 def handle_investment(body, ch):
     args = json.loads(body.decode("ascii"))
     company = args["company"].upper()
@@ -101,6 +107,7 @@ def handle_investment(body, ch):
     valuation = float(args["valuation"])
     amount = float(args["amount"])
 
+    # gets called once the confirmation message comes through to commit the change
     def confirm_investment(company, valuation, amount, investor):
         ch.basic_publish(
             exchange="broker",
@@ -123,6 +130,7 @@ def handle_investment(body, ch):
         )
         conn.commit()
 
+        # calculate the pre money, PPS, and share allocations based on VC math
         pre_money = valuation - amount
         data = db_retrieve(
             """SELECT SUM("SHARES") FROM "CAP_TABLE"
@@ -149,6 +157,7 @@ def handle_investment(body, ch):
 
         conn.close()
 
+        # tell the clients to push an update to the frontend
         ch.basic_publish(
             exchange="broker",
             routing_key="data_broadcast",
@@ -173,17 +182,16 @@ def handle_investment(body, ch):
         ),
     )
 
-
 def handle_message(ch, method, properties, body):
     routing_key = method.routing_key.split(".")
 
-    if len(routing_key) == 1:
+    if len(routing_key) == 1: # is an command message like confirm, echo, reset, invest.
         args = json.loads(body.decode("ascii"))
         message = args["message"].split(" ", 1)
         if message[0] == "confirm" and len(message) == 2:
-            if message[1].upper() in work_queue:
+            if message[1].upper() in work_queue: # find and execute the relevant commit function
                 work_queue[message[1].upper()]()
-            del work_queue[message[1].upper()]
+                del work_queue[message[1].upper()]
         elif message[0] == "echo":
             ch.basic_publish(
                 exchange="broker",
@@ -217,7 +225,7 @@ def handle_message(ch, method, properties, body):
                 body=json.dumps(data),
             )
 
-    else:
+    else: # function call from agent to update game state
         function = routing_key[1]
 
         if function == "set_focus":
@@ -227,12 +235,10 @@ def handle_message(ch, method, properties, body):
         elif function == "invest":
             handle_investment(body, ch)
 
-
 def get_new_db_connection():
     return psycopg2.connect(
         database="company_sim", host="db", user="admin", password="root", port="5432"
     )
-
 
 def db_retrieve(operation, parameters=None):
     conn = get_new_db_connection()
@@ -242,12 +248,13 @@ def db_retrieve(operation, parameters=None):
     conn.close()
     return data
 
-
 # main game loop function
 def tick():
     tick_counter = 0
     while True:
-        time.sleep(3)
+        time.sleep(3) # change this to alter the speed of the game, think of this as representing 1 week IRL
+
+        # should contain at most 2 rows per company, one aggregation over features and one aggregation over quality
         data = db_retrieve("""
                             SELECT "COMPANIES"."NAME" AS "NAME", "PRIORITY", "VALUE", "FEATURES", "PAYROLL", "ARR"
                             FROM (
@@ -261,7 +268,7 @@ def tick():
         companies = {}
         for row in data:
             company_name = row[0]
-            priority = row[1]
+            priority = row[1] # will be either 'features' or 'quality'
             skill_value = row[2]
             features_today = row[3]
             payroll = 0 if row[4] is None else row[4]
@@ -271,9 +278,12 @@ def tick():
                 companies[company_name] = {"PAYROLL": 0}
 
             companies[company_name][priority] = skill_value
+
+            # note: payroll is a special case because we need to sum over both rows for a company, all other fields we don't care about overwrites
             companies[company_name]["PAYROLL"] = (
                 payroll + companies[company_name]["PAYROLL"]
             )
+
             companies[company_name]["FEATURES_TODAY"] = (
                 0.0 if features_today is None else features_today
             )
@@ -292,19 +302,19 @@ def tick():
             if "FEATURES" in companies[company]:
                 features = companies[company]["FEATURES"]
 
-            quality = 1 / (1 + pow(1.5, quality))
+            quality = 1 / (1 + pow(1.1, quality))
             features = features + (1 - quality) * companies[company]["FEATURES_TODAY"]
             payroll_spend = companies[company]["PAYROLL"] / 52
 
-            new_arr = (1 - quality) * companies[company]["ARR"]
             added_arr = 0
             for _ in range(SALES_PER_TICK):
                 test_value = max(
-                    int(np.random.exponential(BETA)) + random.randint(-10, 10), 0
+                    int(RANGE*(np.random.beta(ALPHA, BETA)*(1-CHAOS) + random.random()*PERTURB*CHAOS)), 0
                 )
                 if companies[company]["FEATURES_TODAY"] >= test_value:
-                    new_arr = new_arr + ACV * test_value
-                    added_arr = added_arr + ACV * test_value
+                    added_arr = added_arr + VALUE_PER_FEATURE * min(companies[company]["FEATURES_TODAY"], RANGE)
+            
+            new_arr = added_arr + (1 - quality) * companies[company]["ARR"]
 
             cash_inflow = new_arr / 52
             net_cash = cash_inflow - payroll_spend
@@ -329,55 +339,55 @@ def tick():
         connection.close()
         tick_counter = tick_counter + 1
 
+if __name__ == "__main__":
+    thread = threading.Thread(target=tick)
+    thread.start()
 
-thread = threading.Thread(target=tick)
-thread.start()
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host="rabbitmq", port=5672)
+    )
+    channel = connection.channel()
+    channel.exchange_declare(exchange="broker", exchange_type="topic")
+    channel.queue_declare("admin", exclusive=True)
 
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host="rabbitmq", port=5672)
-)
-channel = connection.channel()
-channel.exchange_declare(exchange="broker", exchange_type="topic")
-channel.queue_declare("admin", exclusive=True)
+    channel.queue_bind(exchange="broker", queue="admin", routing_key="admin.#")
 
-channel.queue_bind(exchange="broker", queue="admin", routing_key="admin.#")
+    channel.basic_consume(queue="admin", on_message_callback=handle_message, auto_ack=True)
 
-channel.basic_consume(queue="admin", on_message_callback=handle_message, auto_ack=True)
+    conn = get_new_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+                CREATE TABLE IF NOT EXISTS "CAP_TABLE" (
+                    "INVESTOR" VARCHAR(255),
+                "COMPANY" VARCHAR(255),
+                "AMOUNT" double precision,
+                "PPS" double precision,
+                "SHARES" double precision,
+                "PRE" double precision
+                )""")
+    cursor.execute("""
+                CREATE TABLE IF NOT EXISTS "COMPANIES" (
+                "NAME" VARCHAR(255),
+                "CASH" double precision,
+                "FEATURES" double precision,
+                "VALUATION" double precision,
+                "ARR" double precision,
+                "QUALITY" double precision
+                )""")
+    cursor.execute("""
+                CREATE TABLE IF NOT EXISTS "EMPLOYEES" (
+                "NAME" VARCHAR(255),
+                "EMPLOYER" VARCHAR(255),
+                "MANAGER" VARCHAR(255),
+                "SALARY" integer,
+                "TYPE" VARCHAR(255)
+                )""")
+    cursor.execute("""
+                CREATE TABLE IF NOT EXISTS "EMPLOYEE_OUTPUT" (
+                "NAME" VARCHAR(255),
+                "SKILL" integer,
+                "PRIORITY" VARCHAR(255)
+                )""")
+    conn.commit()
 
-conn = get_new_db_connection()
-cursor = conn.cursor()
-cursor.execute("""
-               CREATE TABLE IF NOT EXISTS "CAP_TABLE" (
-                "INVESTOR" VARCHAR(255),
-               "COMPANY" VARCHAR(255),
-               "AMOUNT" double precision,
-               "PPS" double precision,
-               "SHARES" double precision,
-               "PRE" double precision
-               )""")
-cursor.execute("""
-               CREATE TABLE IF NOT EXISTS "COMPANIES" (
-               "NAME" VARCHAR(255),
-               "CASH" double precision,
-               "FEATURES" double precision,
-               "VALUATION" double precision,
-               "ARR" double precision,
-               "QUALITY" double precision
-               )""")
-cursor.execute("""
-               CREATE TABLE IF NOT EXISTS "EMPLOYEES" (
-               "NAME" VARCHAR(255),
-               "EMPLOYER" VARCHAR(255),
-               "MANAGER" VARCHAR(255),
-               "SALARY" integer,
-               "TYPE" VARCHAR(255)
-               )""")
-cursor.execute("""
-               CREATE TABLE IF NOT EXISTS "EMPLOYEE_OUTPUT" (
-               "NAME" VARCHAR(255),
-               "SKILL" integer,
-               "PRIORITY" VARCHAR(255)
-               )""")
-conn.commit()
-
-channel.start_consuming()
+    channel.start_consuming()

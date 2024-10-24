@@ -223,12 +223,12 @@ function Chat() {
                 })}
               <ListGroup.Item
                 ref={scroll}
-                className="border-0 bg-transparent text-start "
+                className="border-0 !bg-background text-start "
               ></ListGroup.Item>
             </ListGroup>
 
             <div className="w-full relative ">
-              <div className="absolute bottom-full w-full mb-2 overflow-scroll max-h-[30vh]">
+              <div className="absolute bg-transparent bottom-full w-full mb-2 overflow-auto max-h-[30vh]">
                 {showCommands &&
                   filteredCommands.map((cmd, index) => (
                     <div
