@@ -18,7 +18,7 @@ CHAOS = 0.25
 VALUE_PER_FEATURE = 500
 SALES_PER_TICK = 1
 RANGE = 500
-PERTURB = 0.5
+PERTURB = 0.5 
 
 def handle_set_focus(body, ch):
     args = json.loads(body.decode("ascii"))
@@ -248,7 +248,7 @@ def db_retrieve(operation, parameters=None):
     conn.close()
     return data
 
-# main game loop function
+# main game loop function that updates the internal game state
 def tick():
     tick_counter = 0
     while True:
