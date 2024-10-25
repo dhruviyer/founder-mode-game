@@ -367,7 +367,7 @@ if __name__ == "__main__":
                 )""")
     cursor.execute("""
                 CREATE TABLE IF NOT EXISTS "COMPANIES" (
-                "NAME" VARCHAR(255),
+                "NAME" VARCHAR(255) UNIQUE,
                 "CASH" double precision,
                 "FEATURES" double precision,
                 "VALUATION" double precision,
@@ -376,7 +376,7 @@ if __name__ == "__main__":
                 )""")
     cursor.execute("""
                 CREATE TABLE IF NOT EXISTS "EMPLOYEES" (
-                "NAME" VARCHAR(255),
+                "NAME" VARCHAR(255) UNIQUE,
                 "EMPLOYER" VARCHAR(255),
                 "MANAGER" VARCHAR(255),
                 "SALARY" integer,
@@ -384,7 +384,7 @@ if __name__ == "__main__":
                 )""")
     cursor.execute("""
                 CREATE TABLE IF NOT EXISTS "EMPLOYEE_OUTPUT" (
-                "NAME" VARCHAR(255),
+                "NAME" VARCHAR(255) UNIQUE,
                 "SKILL" integer,
                 "PRIORITY" VARCHAR(255)
                 )""")

@@ -6,8 +6,15 @@ COPY package.json ./
 
 COPY src/ ./src
 COPY public/ ./public
+COPY components.json ./
+COPY index.html ./
+COPY *.js ./
+COPY tsconfig.app.json ./
+COPY tsconfig.json ./
 
 RUN npm install
 
-CMD ["npm", "start"]
+EXPOSE 5173
+
+CMD ["npm", "start",  "--", "--host", "0.0.0.0"]
 

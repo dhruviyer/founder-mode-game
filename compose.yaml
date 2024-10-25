@@ -1,6 +1,6 @@
 services:
   admin:
-    image: "agent-sim-admin:latest"
+    image: "founder-mode-admin:latest"
     container_name: "admin"
     build:
       context: ./backend/admin/
@@ -9,7 +9,7 @@ services:
         condition: service_healthy
 
   user:
-    image: "agent-sim-user:latest"
+    image: "founder-mode-user:latest"
     container_name: "user"
     build:
       context: ./backend/user/
@@ -58,7 +58,7 @@ services:
     restart: unless-stopped
 
   devs:
-    image: "agent-sim-multiplexed-dev:latest"
+    image: "founder-mode-multiplexed-dev:latest"
     container_name: "devs"
     build:
       context: ./backend/multiplexed-dev/
@@ -70,7 +70,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
   vcs:
-    image: "agent-sim-multiplexed-vc:latest"
+    image: "founder-mode-multiplexed-vc:latest"
     container_name: "vcs"
     build:
       context: ./backend/multiplexed-vc/
@@ -80,6 +80,15 @@ services:
     environment:
       NUM_AGENTS: 3
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+  frontend:
+    image: "founder-mode-fronend:latest"
+    container_name: "frontend"
+    build:
+      context: ./frontend/
+    hostname: "localhost"
+    ports:
+      - "5173:5173"
 
 volumes:
   pgdata:
